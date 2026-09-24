@@ -1,0 +1,6 @@
+{
+  "_comentario": "Feriados adicionales que no están en la ley nacional: decretos del Ejecutivo, feriados bancarios de SUDEBAN o fiestas regionales. Se suman a los calculados por feriados.js. Formato: fecha AAAA-MM-DD y nombre. Editar este archivo NO requiere tocar código.",
+  "feriados": [
+    { "fecha": "2026-01-15", "nombre": "Día del Maestro (no bancario en todo el país)", "activo": false }
+  ]
+}

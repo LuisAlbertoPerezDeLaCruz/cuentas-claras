@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculadora de IVA e IGTF — Cuentas Claras</title>
+  <meta name="description" content="Calcula el IVA (16%) y el IGTF (3%) de una factura en Venezuela, en bolívares o en dólares. Incluye el cálculo inverso desde el total cobrado.">
+  <link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+  <div class="encabezado">
+    <h1>IVA e IGTF</h1>
+    <p class="subtitulo">Cuánto cobrar, cuánto es impuesto y cuánto queda limpio.</p>
+  </div>
+
+  <main>
+    <section class="bloque">
+      <div class="segmentado" role="group" aria-label="Modo de cálculo">
+        <button type="button" id="modo-directo" aria-pressed="true">Desde la base</button>
+        <button type="button" id="modo-inverso" aria-pressed="false">Desde el total cobrado</button>
+      </div>
+
+      <form class="formulario" id="formulario" novalidate>
+        <label class="campo">
+          <span class="campo-etiqueta" id="etiqueta-monto">Monto sin impuestos</span>
+          <div class="campo-control">
+            <span class="prefijo" id="simbolo">$</span>
+            <input type="number" id="monto" inputmode="decimal" step="0.01" min="0"
+                   placeholder="100" autocomplete="off">
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 140px;">
+          <span class="campo-etiqueta">Moneda</span>
+          <div class="campo-control">
+            <select id="moneda">
+              <option value="usd" selected>Dólares</option>
+              <option value="bs">Bolívares</option>
+            </select>
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 140px;">
+          <span class="campo-etiqueta">IVA</span>
+          <div class="campo-control">
+            <select id="iva">
+              <option value="16" selected>16 % general</option>
+              <option value="8">8 % reducida</option>
+              <option value="0">Exento (0 %)</option>
+            </select>
+          </div>
+        </label>
+
+        <label class="casilla">
+          <input type="checkbox" id="aplica-igtf" checked>
+          <span>Pago en divisas (IGTF 3 %)</span>
+        </label>
+      </form>
+
+      <p class="error" id="error-monto" role="alert" hidden></p>
+
+      <dl class="desglose" id="desglose">
+        <div class="fila">
+          <dt>Base imponible</dt>
+          <dd><span id="v-base">—</span><span class="equivalente" id="e-base"></span></dd>
+        </div>
+        <div class="fila">
+          <dt>IVA <span id="et-iva">(16 %)</span></dt>
+          <dd><span id="v-iva">—</span><span class="equivalente" id="e-iva"></span></dd>
+        </div>
+        <div class="fila">
+          <dt>Subtotal</dt>
+          <dd><span id="v-subtotal">—</span><span class="equivalente" id="e-subtotal"></span></dd>
+        </div>
+        <div class="fila">
+          <dt>IGTF (3 %)</dt>
+          <dd><span id="v-igtf">—</span><span class="equivalente" id="e-igtf"></span></dd>
+        </div>
+        <div class="fila fila-total">
+          <dt>Total a cobrar</dt>
+          <dd><span id="v-total">—</span><span class="equivalente" id="e-total"></span></dd>
+        </div>
+      </dl>
+
+      <p class="nota" id="nota-tasa">Cargando la tasa del BCV para mostrar el equivalente…</p>
+
+      <p class="nota">
+        El <strong>IGTF</strong> solo aplica cuando el pago se hace en moneda distinta al bolívar
+        (efectivo en divisas, transferencia internacional o criptomonedas). Si te pagan en
+        bolívares, desmarca la casilla: ahí solo va el IVA. El IGTF se calcula sobre el monto ya
+        con IVA incluido.
+      </p>
+    </section>
+  </main>
+
+  <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/tasas.js"></script>
+  <script src="/assets/js/marco.js"></script>
+  <script src="/assets/js/iva-igtf.js"></script>
+</body>
+</html>

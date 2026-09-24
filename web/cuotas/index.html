@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cuotas y préstamos: cuánto pagas de más — Cuentas Claras</title>
+  <meta name="description" content="Compara el precio de contado contra el pago en cuotas y calcula la cuota de un préstamo. Muestra el sobrecosto y la tasa de interés implícita.">
+  <link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+  <div class="encabezado">
+    <h1>Cuotas y préstamos</h1>
+    <p class="subtitulo">Cuánto pagas de más al comprar en cuotas, y cuánto sale un préstamo.</p>
+  </div>
+
+  <main>
+    <section class="bloque">
+      <div class="segmentado" role="group" aria-label="Tipo de cálculo">
+        <button type="button" id="modo-compra" aria-pressed="true">Contado vs cuotas</button>
+        <button type="button" id="modo-prestamo" aria-pressed="false">Préstamo</button>
+      </div>
+
+      <form class="formulario" id="form-compra" novalidate>
+        <label class="campo">
+          <span class="campo-etiqueta">Precio de contado</span>
+          <div class="campo-control">
+            <span class="prefijo">$</span>
+            <input type="number" id="contado" inputmode="decimal" step="0.01" min="0"
+                   placeholder="100" autocomplete="off">
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 150px;">
+          <span class="campo-etiqueta">N.º de cuotas</span>
+          <div class="campo-control">
+            <input type="number" id="n-cuotas" inputmode="numeric" step="1" min="1"
+                   value="6" autocomplete="off">
+          </div>
+        </label>
+
+        <label class="campo">
+          <span class="campo-etiqueta">Monto de cada cuota</span>
+          <div class="campo-control">
+            <span class="prefijo">$</span>
+            <input type="number" id="monto-cuota" inputmode="decimal" step="0.01" min="0"
+                   placeholder="20" autocomplete="off">
+          </div>
+        </label>
+      </form>
+
+      <form class="formulario" id="form-prestamo" novalidate hidden>
+        <label class="campo">
+          <span class="campo-etiqueta">Monto del préstamo</span>
+          <div class="campo-control">
+            <span class="prefijo">$</span>
+            <input type="number" id="capital" inputmode="decimal" step="0.01" min="0"
+                   placeholder="1000" autocomplete="off">
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 170px;">
+          <span class="campo-etiqueta">Tasa anual</span>
+          <div class="campo-control">
+            <input type="number" id="tasa-anual" inputmode="decimal" step="0.1" min="0"
+                   placeholder="60" autocomplete="off">
+            <span class="sufijo">%</span>
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 150px;">
+          <span class="campo-etiqueta">Plazo</span>
+          <div class="campo-control">
+            <input type="number" id="meses" inputmode="numeric" step="1" min="1"
+                   value="12" autocomplete="off">
+            <span class="sufijo">meses</span>
+          </div>
+        </label>
+      </form>
+
+      <p class="error" id="error" role="alert" hidden></p>
+
+      <dl class="desglose" id="desglose-compra">
+        <div class="fila">
+          <dt>Total en cuotas</dt>
+          <dd id="v-total-cuotas">—</dd>
+        </div>
+        <div class="fila">
+          <dt>Precio de contado</dt>
+          <dd id="v-contado">—</dd>
+        </div>
+        <div class="fila">
+          <dt>Sobrecosto</dt>
+          <dd id="v-sobrecosto">—</dd>
+        </div>
+        <div class="fila fila-total">
+          <dt>Interés implícito</dt>
+          <dd><span id="v-interes">—</span><span class="equivalente" id="e-interes"></span></dd>
+        </div>
+      </dl>
+
+      <dl class="desglose" id="desglose-prestamo" hidden>
+        <div class="fila">
+          <dt>Cuota mensual</dt>
+          <dd id="v-cuota">—</dd>
+        </div>
+        <div class="fila">
+          <dt>Total a pagar</dt>
+          <dd id="v-total-pagado">—</dd>
+        </div>
+        <div class="fila fila-total">
+          <dt>Intereses</dt>
+          <dd><span id="v-intereses">—</span><span class="equivalente" id="e-intereses"></span></dd>
+        </div>
+      </dl>
+
+      <p class="nota" id="nota">
+        El <strong>interés implícito</strong> es la tasa que hace equivalente pagar de contado y
+        pagar en cuotas. Sirve para comparar dos financiamientos distintos: entre dos ofertas, la de
+        menor tasa es la más barata aunque las cuotas se parezcan.
+      </p>
+    </section>
+  </main>
+
+  <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/marco.js"></script>
+  <script src="/assets/js/cuotas.js"></script>
+</body>
+</html>

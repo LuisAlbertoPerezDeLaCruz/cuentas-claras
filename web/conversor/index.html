@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversor de dólares a bolívares — Cuentas Claras</title>
+  <meta name="description" content="Convierte dólares a bolívares con la tasa del BCV, la de Binance, la del euro y el promedio BCV. Tasas consultadas en vivo.">
+  <link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+  <div class="encabezado">
+    <h1>Conversor de dólares a bolívares</h1>
+    <p class="subtitulo">Tasas del BCV y de Binance, consultadas en vivo.</p>
+  </div>
+
+  <main>
+    <section class="bloque" aria-labelledby="titulo-tasas">
+      <div class="bloque-cabecera">
+        <h2 id="titulo-tasas">Tasas de hoy</h2>
+        <button type="button" id="btn-actualizar" class="boton boton-secundario">Actualizar tasas</button>
+      </div>
+
+      <div class="rejilla">
+        <article class="tarjeta" id="tarjeta-bcv" data-estado="cargando">
+          <h3 class="tarjeta-titulo">Dólar BCV</h3>
+          <p class="tarjeta-valor" id="tasa-bcv">Cargando…</p>
+          <p class="tarjeta-meta">
+            <span class="etiqueta">Banco Central de Venezuela</span>
+            <span class="fecha" id="fecha-bcv"></span>
+          </p>
+        </article>
+
+        <article class="tarjeta" id="tarjeta-euro" data-estado="cargando">
+          <h3 class="tarjeta-titulo">Euro BCV</h3>
+          <p class="tarjeta-valor" id="tasa-euro">Cargando…</p>
+          <p class="tarjeta-meta">
+            <span class="etiqueta">Banco Central de Venezuela</span>
+            <span class="fecha" id="fecha-euro"></span>
+          </p>
+        </article>
+
+        <article class="tarjeta" id="tarjeta-binance" data-estado="cargando">
+          <h3 class="tarjeta-titulo">Dólar Binance</h3>
+          <p class="tarjeta-valor" id="tasa-binance">Cargando…</p>
+          <p class="tarjeta-meta">
+            <span class="etiqueta">Binance P2P (USDT/VES)</span>
+            <span class="fecha" id="fecha-binance"></span>
+          </p>
+        </article>
+      </div>
+
+      <p class="aviso" id="aviso-tasas" hidden></p>
+
+      <p class="nota">
+        El BCV publica por la tarde la tasa con <strong>fecha valor</strong> del siguiente día
+        hábil. Aquí se muestra la tasa <strong>vigente</strong>, por eso puede diferir de la que
+        aparece en ese momento en bcv.org.ve.
+      </p>
+    </section>
+
+    <section class="bloque" aria-labelledby="titulo-calculadora">
+      <h2 id="titulo-calculadora">Calcular</h2>
+
+      <form class="formulario" id="formulario" novalidate>
+        <label class="campo">
+          <span class="campo-etiqueta">Monto en dólares (USD)</span>
+          <div class="campo-control">
+            <span class="prefijo">$</span>
+            <input
+              type="number"
+              id="monto"
+              name="monto"
+              inputmode="decimal"
+              step="0.01"
+              min="0"
+              placeholder="100"
+              autocomplete="off">
+          </div>
+        </label>
+        <button type="submit" class="boton">Calcular</button>
+      </form>
+
+      <p class="error" id="error-monto" role="alert" hidden></p>
+
+      <div class="rejilla rejilla-resultados">
+        <article class="tarjeta tarjeta-resultado">
+          <h3 class="tarjeta-titulo">1. Tasa BCV</h3>
+          <p class="tarjeta-valor" id="res-bcv">—</p>
+          <p class="tarjeta-meta"><span class="formula">monto &times; dólar BCV</span></p>
+        </article>
+
+        <article class="tarjeta tarjeta-resultado">
+          <h3 class="tarjeta-titulo">2. Tasa Binance</h3>
+          <p class="tarjeta-valor" id="res-binance">—</p>
+          <p class="tarjeta-meta"><span class="formula">monto &times; dólar Binance</span></p>
+        </article>
+
+        <article class="tarjeta tarjeta-resultado">
+          <h3 class="tarjeta-titulo">3. Promedio BCV</h3>
+          <p class="tarjeta-valor" id="res-promedio">—</p>
+          <p class="tarjeta-meta"><span class="formula">monto &times; (dólar BCV + euro BCV) / 2</span></p>
+        </article>
+
+        <article class="tarjeta tarjeta-resultado">
+          <h3 class="tarjeta-titulo">4. Tasa euro BCV</h3>
+          <p class="tarjeta-valor" id="res-euro">—</p>
+          <p class="tarjeta-meta"><span class="formula">monto &times; euro BCV</span></p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/tasas.js"></script>
+  <script src="/assets/js/marco.js"></script>
+  <script src="/assets/js/conversor.js"></script>
+</body>
+</html>

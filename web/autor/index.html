@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sobre el autor — Cuentas Claras</title>
+  <meta name="description" content="Quién construyó Cuentas Claras y cómo está montado el sitio en AWS: S3 privado, CloudFront con Origin Access Control e infraestructura como código.">
+  <link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+  <div class="encabezado">
+    <h1>Sobre el autor</h1>
+    <p class="subtitulo">Quién hizo esto y cómo está montado.</p>
+  </div>
+
+  <main>
+    <section class="bloque">
+      <h2>Hola</h2>
+      <p>
+        Soy <strong>[TU NOMBRE]</strong>, desarrollador. Construí Cuentas Claras para resolver
+        cálculos que en Venezuela se hacen todos los días a mano: convertir a la tasa del día,
+        sacar el IVA y el IGTF de una factura, saber si el lunes hay banco o dividir una cuenta
+        sin discusiones.
+      </p>
+      <p>
+        <strong>[DOS LÍNEAS SOBRE TI: en qué trabajas, qué tecnologías usas y qué tipo de proyecto
+        te interesa.]</strong>
+      </p>
+
+      <p style="margin-top:18px;">
+        <a class="boton" href="[TU EMAIL O LINKEDIN]" style="display:inline-block;text-decoration:none;">Contactarme</a>
+        <a class="boton boton-secundario" href="[TU GITHUB]" style="display:inline-block;text-decoration:none;margin-left:8px;">Código en GitHub</a>
+      </p>
+
+      <p class="nota">
+        Marcadores por rellenar: nombre, bio, enlace de contacto y repositorio.
+      </p>
+    </section>
+
+    <section class="bloque">
+      <h2>Cómo está montado</h2>
+
+      <svg class="diagrama" viewBox="10 75 700 190" role="img"
+           aria-label="Diagrama: el navegador pide la página a CloudFront, que la sirve desde un bucket S3 privado, y consulta las APIs de tasas directamente.">
+        <defs>
+          <marker id="punta" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#4ea1ff"/>
+          </marker>
+        </defs>
+
+        <g fill="none" stroke="#4ea1ff" stroke-width="2" marker-end="url(#punta)">
+          <path d="M 195 130 L 245 130"/>
+          <path d="M 455 130 L 505 130"/>
+          <path d="M 110 165 L 110 225 L 245 225" stroke-dasharray="5 4"/>
+        </g>
+
+        <g fill="rgba(255,255,255,0.03)" stroke="#2c3a52" stroke-width="1">
+          <rect x="20" y="100" width="175" height="65" rx="10"/>
+          <rect x="245" y="85" width="210" height="95" rx="10"/>
+          <rect x="505" y="100" width="190" height="65" rx="10"/>
+          <rect x="245" y="195" width="210" height="60" rx="10"/>
+        </g>
+
+        <g fill="#eef2f9" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">
+          <text x="107" y="128">Navegador</text>
+          <text x="350" y="118">CloudFront + HTTPS</text>
+          <text x="600" y="128">Bucket S3</text>
+          <text x="350" y="222">APIs de tasas</text>
+        </g>
+
+        <g fill="#9aa8bf" font-family="system-ui, sans-serif" font-size="11.5" text-anchor="middle">
+          <text x="107" y="148">del visitante</text>
+          <text x="350" y="138">CDN en el borde</text>
+          <text x="350" y="158">Función: /ruta/ → index.html</text>
+          <text x="600" y="148">privado, solo vía OAC</text>
+          <text x="350" y="240">BCV y Binance (terceros)</text>
+          <text x="145" y="215" text-anchor="start">consulta directa</text>
+        </g>
+      </svg>
+
+      <ul class="lista" style="margin-top:14px;">
+        <li><span><strong>S3</strong></span><span class="fecha-item">Bucket privado: no acepta tráfico público directo</span></li>
+        <li><span><strong>CloudFront</strong></span><span class="fecha-item">CDN, HTTPS y Origin Access Control hacia S3</span></li>
+        <li><span><strong>CloudFront Functions</strong></span><span class="fecha-item">Cómputo en el borde para resolver rutas de carpeta</span></li>
+        <li><span><strong>ACM</strong></span><span class="fecha-item">Certificado TLS gestionado</span></li>
+        <li><span><strong>CloudFormation</strong></span><span class="fecha-item">Toda la infraestructura versionada como código</span></li>
+      </ul>
+
+      <p class="nota">
+        Sin servidores que administrar y sin EC2: el sitio se sirve desde un bucket privado a
+        través de la CDN, y el cálculo ocurre en el navegador. Las tasas se consultan a APIs
+        públicas de terceros, porque bcv.org.ve no permite consultas desde el navegador.
+        El costo mensual es de centavos.
+      </p>
+    </section>
+
+    <section class="bloque">
+      <h2>Stack</h2>
+      <p>
+        HTML, CSS y JavaScript sin dependencias ni paso de compilación — el sitio entero pesa unos
+        pocos KB y carga instantáneo. Infraestructura en CloudFormation. Todo el código está
+        publicado.
+      </p>
+    </section>
+  </main>
+
+  <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/marco.js"></script>
+</body>
+</html>

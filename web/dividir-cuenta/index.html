@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dividir la cuenta con propina — Cuentas Claras</title>
+  <meta name="description" content="Reparte una cuenta entre varias personas con propina, en partes iguales o según lo que consumió cada quien. Resultado en bolívares y dólares.">
+  <link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+  <div class="encabezado">
+    <h1>Dividir la cuenta</h1>
+    <p class="subtitulo">Con propina, en partes iguales o según lo que consumió cada quien.</p>
+  </div>
+
+  <main>
+    <section class="bloque">
+      <div class="segmentado" role="group" aria-label="Forma de repartir">
+        <button type="button" id="modo-igual" aria-pressed="true">Partes iguales</button>
+        <button type="button" id="modo-consumo" aria-pressed="false">Por consumo</button>
+      </div>
+
+      <form class="formulario" id="formulario" novalidate>
+        <label class="campo" id="campo-total">
+          <span class="campo-etiqueta">Total de la cuenta</span>
+          <div class="campo-control">
+            <span class="prefijo" id="simbolo">$</span>
+            <input type="number" id="total" inputmode="decimal" step="0.01" min="0"
+                   placeholder="50" autocomplete="off">
+          </div>
+        </label>
+
+        <label class="campo" id="campo-personas" style="flex: 0 1 140px;">
+          <span class="campo-etiqueta">Personas</span>
+          <div class="campo-control">
+            <input type="number" id="personas" inputmode="numeric" step="1" min="1"
+                   value="4" autocomplete="off">
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 140px;">
+          <span class="campo-etiqueta">Propina</span>
+          <div class="campo-control">
+            <input type="number" id="propina" inputmode="decimal" step="1" min="0"
+                   value="10" autocomplete="off">
+            <span class="sufijo">%</span>
+          </div>
+        </label>
+
+        <label class="campo" style="flex: 0 1 140px;">
+          <span class="campo-etiqueta">Moneda</span>
+          <div class="campo-control">
+            <select id="moneda">
+              <option value="usd" selected>Dólares</option>
+              <option value="bs">Bolívares</option>
+            </select>
+          </div>
+        </label>
+      </form>
+
+      <div id="zona-consumo" hidden>
+        <ul class="lista" id="lista-personas"></ul>
+        <p style="margin-top:14px;">
+          <button type="button" class="boton boton-secundario" id="btn-agregar">+ Agregar persona</button>
+        </p>
+      </div>
+
+      <p class="error" id="error" role="alert" hidden></p>
+
+      <dl class="desglose">
+        <div class="fila">
+          <dt>Cuenta</dt>
+          <dd><span id="v-cuenta">—</span><span class="equivalente" id="e-cuenta"></span></dd>
+        </div>
+        <div class="fila">
+          <dt>Propina <span id="et-propina">(10 %)</span></dt>
+          <dd><span id="v-propina">—</span><span class="equivalente" id="e-propina"></span></dd>
+        </div>
+        <div class="fila">
+          <dt>Total con propina</dt>
+          <dd><span id="v-total">—</span><span class="equivalente" id="e-total"></span></dd>
+        </div>
+        <div class="fila fila-total" id="fila-por-persona">
+          <dt>Cada persona paga</dt>
+          <dd><span id="v-persona">—</span><span class="equivalente" id="e-persona"></span></dd>
+        </div>
+      </dl>
+
+      <ul class="lista" id="reparto" hidden></ul>
+
+      <p class="nota" id="nota-tasa">Cargando la tasa del BCV para mostrar el equivalente…</p>
+    </section>
+  </main>
+
+  <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/tasas.js"></script>
+  <script src="/assets/js/marco.js"></script>
+  <script src="/assets/js/dividir.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feriados de Venezuela y días hábiles — Cuentas Claras</title>
+  <meta name="description" content="Feriados nacionales de Venezuela, cuánto falta para el próximo y calculadora de días hábiles entre dos fechas.">
+  <link rel="stylesheet" href="/assets/css/base.css">
+</head>
+<body>
+  <div class="encabezado">
+    <h1>Feriados y días hábiles</h1>
+    <p class="subtitulo">Qué días no se trabaja y cuántos días hábiles hay entre dos fechas.</p>
+  </div>
+
+  <main>
+    <section class="bloque">
+      <h2>Próximo feriado</h2>
+      <div class="rejilla rejilla-2">
+        <article class="tarjeta" id="tarjeta-proximo" data-estado="listo">
+          <h3 class="tarjeta-titulo">Próximo</h3>
+          <p class="tarjeta-valor" id="proximo-nombre">—</p>
+          <p class="tarjeta-meta"><span id="proximo-fecha"></span></p>
+        </article>
+
+        <article class="tarjeta" id="tarjeta-faltan" data-estado="listo">
+          <h3 class="tarjeta-titulo">Faltan</h3>
+          <p class="tarjeta-valor" id="proximo-faltan">—</p>
+          <p class="tarjeta-meta"><span id="proximo-habiles"></span></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="bloque">
+      <h2>Días hábiles entre dos fechas</h2>
+
+      <form class="formulario" id="formulario" novalidate>
+        <label class="campo">
+          <span class="campo-etiqueta">Desde</span>
+          <div class="campo-control">
+            <input type="date" id="desde">
+          </div>
+        </label>
+
+        <label class="campo">
+          <span class="campo-etiqueta">Hasta</span>
+          <div class="campo-control">
+            <input type="date" id="hasta">
+          </div>
+        </label>
+      </form>
+
+      <p class="error" id="error-fechas" role="alert" hidden></p>
+
+      <dl class="desglose">
+        <div class="fila">
+          <dt>Días totales</dt>
+          <dd id="v-totales">—</dd>
+        </div>
+        <div class="fila">
+          <dt>Fines de semana</dt>
+          <dd id="v-finde">—</dd>
+        </div>
+        <div class="fila">
+          <dt>Feriados entre semana</dt>
+          <dd id="v-feriados">—</dd>
+        </div>
+        <div class="fila fila-total">
+          <dt>Días hábiles</dt>
+          <dd id="v-habiles">—</dd>
+        </div>
+      </dl>
+
+      <p class="nota">Se cuentan ambas fechas incluidas. Se excluyen sábados, domingos y los feriados de la lista de abajo.</p>
+    </section>
+
+    <section class="bloque">
+      <div class="bloque-cabecera">
+        <h2>Feriados de <span id="anio-lista"></span></h2>
+        <div class="segmentado" role="group" aria-label="Año">
+          <button type="button" id="anio-anterior">◀</button>
+          <button type="button" id="anio-siguiente">▶</button>
+        </div>
+      </div>
+
+      <ul class="lista" id="lista-feriados"></ul>
+
+      <p class="nota">
+        Lista basada en la <strong>Ley de Fiestas Nacionales</strong> y el artículo 184 de la
+        <strong>LOTTT</strong>. Las fechas de Carnaval y Semana Santa se calculan a partir de la
+        Pascua de cada año. <strong>No incluye</strong> feriados regionales ni los decretados por
+        el Ejecutivo, que se anuncian con poca antelación: confirma siempre antes de un trámite.
+      </p>
+    </section>
+  </main>
+
+  <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/marco.js"></script>
+  <script src="/assets/js/feriados.js"></script>
+</body>
+</html>
