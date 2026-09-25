@@ -5,8 +5,11 @@
  * El contenido de cada herramienta sí va escrito en su HTML: lo que se inyecta
  * aquí es solo el marco, para no perder indexación en buscadores.
  *
- * Las rutas son absolutas (/conversor/) porque el sitio vive en la raíz del
- * dominio, tanto en CloudFront como al servirlo localmente.
+ * Las rutas son RELATIVAS (conversor/, no /conversor/) porque el sitio vive en
+ * una subruta del dominio: https://lapfreelance56.online/cuentas-claras/. Quien
+ * sabe cuál es la subruta es el <base href> de cada página, y el navegador
+ * resuelve estas rutas contra él. Poner aquí una barra inicial las sacaría de la
+ * aplicación y el sitio se vería sin estilos ni navegación.
  */
 
 'use strict';
@@ -17,24 +20,36 @@ window.Marco = (function () {
   var NOMBRE_ACENTO = 'Claras';
 
   var PAGINAS = [
-    { ruta: '/conversor/', texto: 'Conversor' },
-    { ruta: '/iva-igtf/', texto: 'IVA e IGTF' },
-    { ruta: '/feriados/', texto: 'Feriados' },
-    { ruta: '/dividir-cuenta/', texto: 'Dividir cuenta' },
-    { ruta: '/cuotas/', texto: 'Cuotas' },
-    { ruta: '/autor/', texto: 'Autor' }
+    { ruta: 'conversor/', texto: 'Conversor' },
+    { ruta: 'iva-igtf/', texto: 'IVA e IGTF' },
+    { ruta: 'feriados/', texto: 'Feriados' },
+    { ruta: 'dividir-cuenta/', texto: 'Dividir cuenta' },
+    { ruta: 'cuotas/', texto: 'Cuotas' },
+    { ruta: 'autor/', texto: 'Autor' }
   ];
 
-  // "/conversor/index.html" y "/conversor/" son la misma página.
+  // La subruta en la que está montado el sitio, leída del <base href> en vez de
+  // repetida aquí. Sirve como raíz para todo lo que el JavaScript tenga que
+  // resolver a mano (el service worker de la PWA la necesitará).
+  var BASE = new URL('./', document.baseURI).pathname;
+
+  // "conversor/index.html" y "conversor/" son la misma página.
   function rutaActual() {
     return location.pathname.replace(/index\.html$/, '');
+  }
+
+  // PAGINAS guarda rutas relativas al <base>; location.pathname es absoluta. Sin
+  // resolverlas primero, la comparación nunca coincide y la barra se queda sin
+  // marcar la página activa.
+  function rutaAbsoluta(relativa) {
+    return new URL(relativa, document.baseURI).pathname;
   }
 
   function construirBarra() {
     var actual = rutaActual();
 
     var enlaces = PAGINAS.map(function (p) {
-      var marcador = p.ruta === actual ? ' aria-current="page"' : '';
+      var marcador = rutaAbsoluta(p.ruta) === actual ? ' aria-current="page"' : '';
       return '<a href="' + p.ruta + '"' + marcador + '>' + p.texto + '</a>';
     }).join('');
 
@@ -42,7 +57,7 @@ window.Marco = (function () {
     barra.className = 'barra';
     barra.innerHTML =
       '<div class="barra-interna">' +
-      '<a class="marca" href="/">' + NOMBRE + ' <span>' + NOMBRE_ACENTO + '</span></a>' +
+      '<a class="marca" href="./">' + NOMBRE + ' <span>' + NOMBRE_ACENTO + '</span></a>' +
       '<nav class="menu" aria-label="Herramientas">' + enlaces + '</nav>' +
       '</div>';
     return barra;
@@ -55,7 +70,7 @@ window.Marco = (function () {
       '<p>Las tasas provienen de APIs públicas de terceros y son <strong>referenciales</strong>. ' +
       'Para operaciones oficiales consulta directamente al BCV.</p>' +
       '<p class="pie-creditos">' + NOMBRE + ' ' + NOMBRE_ACENTO + ' — herramientas del día a día. ' +
-      '<a href="/autor/">Sobre el autor</a></p>';
+      '<a href="autor/">Sobre el autor</a></p>';
     return pie;
   }
 
@@ -66,5 +81,5 @@ window.Marco = (function () {
 
   document.addEventListener('DOMContentLoaded', montar);
 
-  return { NOMBRE: NOMBRE + ' ' + NOMBRE_ACENTO, PAGINAS: PAGINAS };
+  return { NOMBRE: NOMBRE + ' ' + NOMBRE_ACENTO, PAGINAS: PAGINAS, BASE: BASE };
 })();

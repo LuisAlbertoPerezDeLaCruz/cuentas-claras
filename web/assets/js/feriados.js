@@ -224,7 +224,7 @@
     $('anio-siguiente').addEventListener('click', function () { anioMostrado++; pintarLista(); });
 
     // Los feriados extra son opcionales: si el archivo falla, la página sigue.
-    fetch('/assets/data/feriados-extra.json', { cache: 'no-store' })
+    fetch('assets/data/feriados-extra.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (datos) {
         if (datos && Array.isArray(datos.feriados)) {

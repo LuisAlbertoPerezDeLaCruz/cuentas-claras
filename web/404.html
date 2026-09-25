@@ -2,10 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <!-- Ruta base del sitio: vive en una subruta, no en la raiz del dominio.
+       Es la unica linea que sabe cual es; todas las rutas de abajo son
+       relativas a ella. -->
+  <base href="/cuentas-claras/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Página no encontrada — Cuentas Claras</title>
   <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body>
   <div class="encabezado">
@@ -17,27 +21,27 @@
     <section class="bloque">
       <h2>Herramientas disponibles</h2>
       <div class="enlaces">
-        <a class="enlace-herramienta" href="/conversor/">
+        <a class="enlace-herramienta" href="conversor/">
           <h3>Conversor de dólares</h3>
           <p>De dólares a bolívares y al revés, según BCV, Binance, euro y promedio.</p>
         </a>
-        <a class="enlace-herramienta" href="/iva-igtf/">
+        <a class="enlace-herramienta" href="iva-igtf/">
           <h3>IVA e IGTF</h3>
           <p>Cuánto cobrar, cuánto es impuesto y cuánto queda limpio.</p>
         </a>
-        <a class="enlace-herramienta" href="/feriados/">
+        <a class="enlace-herramienta" href="feriados/">
           <h3>Feriados y días hábiles</h3>
           <p>Próximo feriado bancario y días hábiles entre dos fechas.</p>
         </a>
-        <a class="enlace-herramienta" href="/dividir-cuenta/">
+        <a class="enlace-herramienta" href="dividir-cuenta/">
           <h3>Dividir la cuenta</h3>
           <p>Reparte con propina, en partes iguales o por consumo.</p>
         </a>
-        <a class="enlace-herramienta" href="/cuotas/">
+        <a class="enlace-herramienta" href="cuotas/">
           <h3>Cuotas y préstamos</h3>
           <p>Cuánto pagas de más al comprar en cuotas.</p>
         </a>
-        <a class="enlace-herramienta" href="/">
+        <a class="enlace-herramienta" href="./">
           <h3>Ir al inicio</h3>
           <p>Ver las tasas del día y todas las herramientas.</p>
         </a>
@@ -45,7 +49,7 @@
     </section>
   </main>
 
-  <script src="/assets/js/formato.js"></script>
-  <script src="/assets/js/marco.js"></script>
+  <script src="assets/js/formato.js"></script>
+  <script src="assets/js/marco.js"></script>
 </body>
 </html>

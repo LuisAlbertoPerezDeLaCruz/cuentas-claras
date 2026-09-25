@@ -10,12 +10,24 @@ Parameters:
     Description: Prefijo para nombrar los recursos.
     AllowedPattern: '^[a-z0-9-]{3,40}$'
 
+  RutaBase:
+    Type: String
+    Default: cuentas-claras
+    Description: >
+      Subruta en la que vive el sitio, SIN barras: con "cuentas-claras" el sitio
+      queda en https://dominio/cuentas-claras/. Es tambien el prefijo de las
+      claves en el bucket, asi que el "aws s3 sync" debe apuntar a ese prefijo.
+      OJO: este valor tiene que coincidir con el <base href> del <head> de cada
+      pagina de web/. Cambiarlo aqui y no alli deja el sitio sin CSS ni
+      JavaScript, y no falla al validar la plantilla: falla en el navegador.
+    AllowedPattern: '^[a-z0-9-]{1,60}$'
+
   NombreDominio:
     Type: String
     Default: ''
     Description: >
-      Dominio propio, por ejemplo cuentasclaras.app. Dejalo vacio para usar solo
-      el dominio que asigna CloudFront.
+      Dominio propio, por ejemplo lapfreelance56.online. Dejalo vacio para usar
+      solo el dominio que asigna CloudFront.
 
   CertificadoArn:
     Type: String
@@ -91,30 +103,55 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  # Con bucket privado + OAC, S3 deja de resolver los documentos indice de las
-  # subcarpetas: /conversor/ devolveria un 403 en vez de /conversor/index.html.
-  # Esta funcion, que corre en el borde antes de buscar en cache, lo arregla.
+  # Hace dos cosas, las dos obligatorias:
+  #
+  # 1. Con bucket privado + OAC, S3 deja de resolver los documentos indice de las
+  #    subcarpetas: /cuentas-claras/conversor/ devolveria un 403 en vez de la
+  #    clave /cuentas-claras/conversor/index.html.
+  # 2. Manda la raiz del dominio a la subruta, porque en la raiz del bucket no
+  #    hay nada: todas las claves cuelgan del prefijo RutaBase.
   FuncionRutas:
     Type: AWS::CloudFront::Function
     Properties:
       Name: !Sub '${NombreProyecto}-rutas'
       AutoPublish: true
       FunctionConfig:
-        Comment: Anade index.html a las rutas de carpeta.
+        Comment: Redirige la raiz a la subruta y resuelve los index.html.
         Runtime: cloudfront-js-2.0
-      FunctionCode: |
+      FunctionCode: !Sub |
         function handler(event) {
           var request = event.request;
           var uri = request.uri;
+          var base = '/${RutaBase}';
+
+          // La raiz del dominio no tiene contenido propio todavia. 302 y no 301
+          // a proposito: el dia que la raiz tenga su propia pagina, un 301 se
+          // habria quedado cacheado en los navegadores de los visitantes.
+          // ---> QUITAR ESTE BLOQUE cuando la raiz tenga contenido propio. <---
+          if (uri === '/' || uri === '/index.html') {
+            return redirigir(302, 'Found', base + '/');
+          }
+
+          // Sin barra final y sin extension es una carpeta. Se redirige a la
+          // forma canonica en vez de reescribir, para no servir la misma pagina
+          // en dos URLs distintas; aqui el 301 si es correcto.
+          if (!uri.endsWith('/') && !uri.includes('.')) {
+            return redirigir(301, 'Moved Permanently', uri + '/');
+          }
 
           if (uri.endsWith('/')) {
             request.uri = uri + 'index.html';
-          } else if (!uri.includes('.')) {
-            // /conversor -> /conversor/index.html
-            request.uri = uri + '/index.html';
           }
 
           return request;
+        }
+
+        function redirigir(codigo, descripcion, destino) {
+          return {
+            statusCode: codigo,
+            statusDescription: descripcion,
+            headers: { location: { value: destino } }
+          };
         }
 
   CabecerasSeguridad:
@@ -140,6 +177,11 @@ Resources:
             # connect-src debe listar TODAS las APIs que consulta el navegador.
             # Si se anade una herramienta con otra fuente de datos y no se agrega
             # aqui, esa herramienta deja de cargar sin error visible en la pagina.
+            #
+            # base-uri 'self' NO se puede apretar a 'none': el sitio se sirve en
+            # una subruta y cada pagina lleva un <base href="/RutaBase/">. Con
+            # 'none' el navegador lo ignora y todas las rutas relativas se
+            # resuelven mal, otra vez sin error visible en la pagina.
             ContentSecurityPolicy: >-
               default-src 'self';
               script-src 'self' 'unsafe-inline';
@@ -156,7 +198,11 @@ Resources:
       DistributionConfig:
         Enabled: true
         Comment: !Sub 'Sitio estatico ${NombreProyecto}'
-        DefaultRootObject: index.html
+        # Sin DefaultRootObject a proposito: en la raiz del bucket no hay ningun
+        # index.html (todo cuelga del prefijo RutaBase) y la sustitucion que hace
+        # DefaultRootObject ocurre ANTES de la funcion del borde, lo que volveria
+        # confuso de que ruta parte la redireccion de la raiz. La funcion resuelve
+        # los index.html de todas las rutas, esta incluida.
         HttpVersion: http2and3
         IPV6Enabled: true
         PriceClass: PriceClass_100
@@ -189,24 +235,33 @@ Resources:
             - EventType: viewer-request
               FunctionARN: !GetAtt FuncionRutas.FunctionMetadata.FunctionARN
 
+        # La 404 tambien cuelga de la subruta. Da igual a que profundidad se
+        # sirva, porque su <base href> es absoluto: sus estilos y enlaces
+        # funcionan lo mismo en /cuentas-claras/no-existe/ que en /otra-cosa/.
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 404
-            ResponsePagePath: /404.html
+            ResponsePagePath: !Sub '/${RutaBase}/404.html'
             ErrorCachingMinTTL: 60
           - ErrorCode: 404
             ResponseCode: 404
-            ResponsePagePath: /404.html
+            ResponsePagePath: !Sub '/${RutaBase}/404.html'
             ErrorCachingMinTTL: 60
 
 Outputs:
   UrlCloudFront:
     Description: URL del sitio (funciona aunque no tengas dominio propio).
-    Value: !Sub 'https://${Distribucion.DomainName}'
+    Value: !Sub 'https://${Distribucion.DomainName}/${RutaBase}/'
 
   NombreBucket:
-    Description: Bucket al que se suben los archivos con "aws s3 sync".
+    Description: Bucket del sitio.
     Value: !Ref BucketSitio
+
+  DestinoSync:
+    Description: >
+      Destino exacto del "aws s3 sync". Incluye el prefijo de la subruta: subir a
+      la raiz del bucket dejaria el sitio en 404.
+    Value: !Sub 's3://${BucketSitio}/${RutaBase}'
 
   IdDistribucion:
     Description: Necesario para invalidar la cache despues de cada despliegue.

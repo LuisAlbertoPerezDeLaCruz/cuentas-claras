@@ -2,10 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <!-- Ruta base del sitio: vive en una subruta, no en la raiz del dominio.
+       Es la unica linea que sabe cual es; todas las rutas de abajo son
+       relativas a ella. -->
+  <base href="/cuentas-claras/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sobre el autor — Cuentas Claras</title>
   <meta name="description" content="Quién construyó Cuentas Claras y cómo está montado el sitio en AWS: S3 privado, CloudFront con Origin Access Control e infraestructura como código.">
-  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body>
   <div class="encabezado">
@@ -111,7 +115,7 @@
     </section>
   </main>
 
-  <script src="/assets/js/formato.js"></script>
-  <script src="/assets/js/marco.js"></script>
+  <script src="assets/js/formato.js"></script>
+  <script src="assets/js/marco.js"></script>
 </body>
 </html>

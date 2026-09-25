@@ -18,13 +18,15 @@ Restricciones que marcan todas las decisiones:
 
 - ✅ Seis páginas construidas y **verificadas en el navegador**, con los cálculos contrastados a
   mano y la consola limpia.
-- ✅ `infra/template.yaml` escrita y validada como YAML; la función de reescritura de rutas
-  probada con cinco casos.
+- ✅ `infra/template.yaml` escrita y validada como YAML; la función del borde probada con
+  **17 casos** (`node infra/probar-funcion-rutas.js`).
 - ⬜ **Pendiente: desplegar.** No se ha creado ninguna pila ni bucket todavía.
-- ⬜ **Dominio ya registrado: `lapfreelance56.online`.** El sitio va en
-  `https://lapfreelance56.online/cuentas-claras` — **en una subruta, no en la raíz**. Ver
-  "Servir bajo una subruta" más abajo: invalida el supuesto de las rutas absolutas.
-- ⬜ **Alcance nuevo (25-sep-2026): PWA y una API propia.** Ver "PWA y API".
+- ✅ **Subruta resuelta (25-sep-2026).** El sitio va en
+  `https://lapfreelance56.online/cuentas-claras/` y ya está construido para eso: `<base href>` en
+  cada página, rutas relativas, prefijo en el bucket, la función del borde rehecha y `servir.sh`
+  sirviendo bajo la misma subruta. Ver "Servir bajo una subruta".
+- ⬜ **Alcance nuevo (25-sep-2026): PWA y una API propia.** Ver "PWA y API". La subruta, que era
+  su prerrequisito, ya está resuelta.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
   texto propio de Luis, no inventado: **no reescribirlo**.
 - ✅ **Publicado en GitHub**: https://github.com/LuisAlbertoPerezDeLaCruz/cuentas-claras (público).
@@ -44,6 +46,8 @@ aws/
 │   └── assets/{css/base.css, js/*.js, data/feriados-extra.json}
 └── infra/
     ├── template.yaml           ← CloudFormation
+    ├── probar-rutas.js         ← comprueba las rutas del sitio (node, sin servidor)
+    ├── probar-funcion-rutas.js ← pruebas de la función del borde (node, sin desplegar)
     └── DEPLOY.md               ← guía de despliegue paso a paso
 ```
 
@@ -52,11 +56,13 @@ Sin paso de compilación y sin dependencias: HTML, CSS y JS planos. Una página 
 Los módulos se exponen como globales (`window.Formato`, `window.Tasas`) en vez de módulos ES, para
 no depender de que S3 sirva el tipo MIME correcto.
 
-**Las rutas internas son absolutas** (`/conversor/`, `/assets/...`) porque se construyeron
-asumiendo que el sitio vivía en la raíz del dominio. ⚠️ **Ese supuesto ya no se cumple**: el
-destino es `lapfreelance56.online/cuentas-claras`. Ver "Servir bajo una subruta".
+**Las rutas internas son relativas** (`conversor/`, `assets/...`), resueltas contra el
+`<base href="/cuentas-claras/">` que lleva el `<head>` de cada página. Nunca poner una barra
+inicial: sacaría la ruta de la aplicación. Ver "Servir bajo una subruta".
 
 ## Las herramientas
+
+Todas cuelgan de `/cuentas-claras/`:
 
 | Ruta | Qué hace |
 |---|---|
@@ -130,37 +136,65 @@ horario no la corra un día.
   y obtiene un enlace público con los precios en Bs actualizados solos), que no sufre el arranque
   en frío de un mapa de precios comunitario.
 
-## Servir bajo una subruta (⚠️ antes de desplegar)
+## Servir bajo una subruta
 
-El destino es `https://lapfreelance56.online/cuentas-claras`, **no** la raíz del dominio. Todo el
-sitio se escribió al revés, así que esto hay que resolverlo **antes** del primer despliegue.
+**Resuelto el 25-sep-2026.** El sitio vive en `https://lapfreelance56.online/cuentas-claras/`, no
+en la raíz del dominio. Se escribió al revés y se rehízo antes del primer despliegue. Así quedaron
+las tres decisiones:
 
-Lo que se rompe: cada ruta absoluta (`/conversor/`, `/assets/css/base.css`) apunta fuera de la
-aplicación. El síntoma es el sitio sin CSS ni JavaScript — el mismo que da abrir `index.html` con
-doble clic. No falla al validar la plantilla: falla en el navegador, ya desplegado.
+**1. Cómo se monta en AWS: prefijo en el bucket, sin *Origin Path*.** Las claves del bucket cuelgan
+de `cuentas-claras/`, así que la ruta que pide el navegador y la clave en S3 son la misma. El
+`aws s3 sync` **tiene que ir al prefijo** (`s3://BUCKET/cuentas-claras`); a la raíz del bucket deja
+todo el sitio en 404. La salida `DestinoSync` de la pila ya lo trae puesto.
 
-Tres decisiones encadenadas:
+⚠️ *Origin Path* haría lo contrario de lo que hace falta: añade el prefijo a una URL que no lo
+lleva. Y de cualquier forma **no arregla las rutas del HTML**, que es el problema de verdad.
+Ventaja del prefijo: la raíz del dominio queda libre y otro proyecto puede vivir en `/otra-cosa/`
+en el mismo bucket y la misma distribución.
 
-1. **Cómo se monta la subruta en AWS**: bucket con prefijo `cuentas-claras/` más *Origin Path* en
-   CloudFront, o un *cache behavior* con patrón `/cuentas-claras/*`. En los dos casos el navegador
-   sigue viendo la URL completa: **el Origin Path no arregla las rutas del HTML**.
-2. **Cómo se arreglan las rutas del HTML**: prefijarlas todas, o un `<base href="/cuentas-claras/">`
-   con rutas relativas. Lo segundo es un cambio más chico, pero hay que verificar que `marco.js` y
-   los enlaces que genera el JS lo respeten. Sea cual sea, **`servir.sh` tiene que servir bajo la
-   misma subruta** o las pruebas locales dejan de representar el destino real.
-3. **La CloudFront Function**: hoy convierte `/ruta/` en `/ruta/index.html` asumiendo la raíz. Hay
-   que decidir si recibe el prefijo o si el Origin Path ya lo quitó. **Sus cinco casos de prueba
-   quedan obsoletos**: rehacerlos.
+**2. Cómo se arreglaron las rutas del HTML: `<base href>` y rutas relativas.** Cada página lleva
+`<base href="/cuentas-claras/">` justo después del `<meta charset>` — antes de cualquier ruta, o el
+navegador ya habría empezado a pedir el CSS. Es la **única** línea que sabe cuál es la subruta (ocho
+copias, una por página); todo lo demás es relativo. `marco.js` no la repite: la lee de
+`document.baseURI` y la expone como `Marco.BASE`.
 
-Además: certificado ACM **en us-east-1** (lo exige CloudFront, no sirve en otra región) y registros
-en Route 53 — el único costo fijo real, ~$0,50/mes.
+Trampas de este camino, todas ya resueltas:
+- **`marco.js` compara rutas.** `PAGINAS` guarda rutas relativas y `location.pathname` es absoluta:
+  hay que resolver las primeras con `new URL(ruta, document.baseURI)` antes de comparar, o la barra
+  nunca marca la página activa.
+- **`fetch` con ruta relativa sí respeta el `<base>`** (se resuelve contra `document.baseURI`). Por
+  eso `feriados.js` pide `assets/data/feriados-extra.json` sin barra inicial.
+- **La CSP no puede apretar `base-uri` a `'none'`.** Con `'none'` el navegador ignora el `<base>` y
+  todas las rutas relativas se resuelven mal, **sin error visible en la página**. Tiene que quedar
+  en `'self'`.
+- **Nada de enlaces de fragmento sueltos** (`href="#algo"`, `href="#"`): con un `<base>` presente
+  resuelven contra la base, no contra la página actual, y navegan fuera. Hoy no hay ninguno; si se
+  añade uno, tiene que llevar la ruta delante.
+- **El enlace a la portada es `href="./"`**, no `href="/"`.
+
+**3. La función del borde: rehecha, con 17 casos de prueba.** `infra/probar-funcion-rutas.js`
+extrae el código **de la propia plantilla** (no lo copia) y lo corre en Node, así que no puede
+quedarse validando una versión vieja. Hace tres cosas:
+- `/` y `/index.html` → **302** a `/cuentas-claras/`. Es 302 y no 301 a propósito: el día que la
+  raíz tenga su propia página, un 301 se habría quedado cacheado en los navegadores de los
+  visitantes. Ese bloque hay que **quitarlo** cuando la raíz tenga contenido.
+- Sin barra final y sin extensión → **301** a la forma canónica con barra, en vez de reescribir, para
+  no servir la misma página en dos URLs.
+- Con barra final → reescribe a `index.html`, que es lo que S3 con OAC no resuelve solo.
+
+Se quitó `DefaultRootObject` de la plantilla: en la raíz del bucket no hay ningún `index.html`, y su
+sustitución ocurre **antes** de la función del borde, lo que volvía confuso de qué ruta parte la
+redirección. La función cubre todos los índices, ese incluido.
+
+**Pendiente de la subruta, del lado de AWS:** certificado ACM **en us-east-1** (lo exige CloudFront,
+no sirve en otra región) y registros en Route 53 — el único costo fijo real, ~$0,50/mes.
 
 ## PWA y API
 
 Alcance pedido por Luis el 25-sep-2026.
 
-**La API revierte la decisión de "sin backend"** que está documentada más abajo: ya no es una
-restricción vigente. La que sí sigue en pie es *sin EC2 ni servidores que administrar* y costo de
+**La API revierte la decisión de "sin backend"** que está documentada en "Decisiones y trampas
+encontradas": ya no es una restricción vigente. La que sí sigue en pie es *sin EC2 ni servidores que administrar* y costo de
 centavos — o sea API Gateway + Lambda, nunca una instancia. El motivo es explícito: su curso de AWS
 cubre cómo incluir APIs, y quiere aprenderlo y demostrarlo.
 
@@ -175,8 +209,10 @@ Trampas a revisar al planificar:
 - **PWA + tasas**: un service worker con estrategia *cache-first* serviría tasas viejas como si
   fueran del día. Es el peor fallo posible en esta aplicación. **Las tasas nunca van a caché de
   service worker.**
-- **PWA + subruta**: el `scope` del service worker y el `start_url` del manifiesto dependen de la
-  ruta base. Resolver primero "Servir bajo una subruta".
+- **PWA + subruta**: ya resuelta. El `scope` del service worker y el `start_url` del manifiesto son
+  `/cuentas-claras/`; en JavaScript está en `Marco.BASE`, leído del `<base href>`. Ojo con el
+  registro: un service worker no puede tener un `scope` por encima de la ruta desde la que se
+  sirve, así que el archivo va **dentro** de la subruta, no en la raíz del bucket.
 - **API + CSP**: hay que **agregar el dominio de la API a `connect-src`** en la plantilla, o dejará
   de cargar sin error visible en la página.
 
@@ -196,19 +232,35 @@ expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propi
 ## Probar localmente
 
 ```bash
-./servir.sh          # http://127.0.0.1:8765/
+./servir.sh                          # http://127.0.0.1:8765/cuentas-claras/
+node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta y existen
+node infra/probar-funcion-rutas.js   # los 17 casos de la función del borde
 ```
 
-⚠️ **No abrir `web/index.html` con doble clic.** Las rutas son absolutas (`/assets/...`) y bajo
-`file://` la barra inicial apunta a la raíz del disco: la página carga sin estilos ni JavaScript y
-parece rota. Ya pasó una vez. Las rutas absolutas son las correctas para el destino real, donde el
-sitio vive en la raíz del dominio.
+Las dos pruebas corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad
+saboteando a propósito: una barra inicial suelta, un `<base href>` que se separa de `RutaBase`, un
+`<base>` colocado después de la primera ruta, y la función del borde vuelta agnóstica de la subruta.
+`probar-rutas.js` además lee `RutaBase` **de la plantilla** y lo contrasta con los ocho `<base
+href>`, que es el desajuste que desplegaría el sitio roto sin que nada se queje antes.
+
+`servir.sh` **sirve bajo la misma subruta que producción** y se comporta como CloudFront: la raíz
+redirige a la subruta y lo que no existe cae en la 404 del sitio. Servirlo en la raíz haría que las
+pruebas locales no representaran el destino, que es justo el error que costó rehacer el sitio.
+
+⚠️ **No abrir `web/index.html` con doble clic.** Bajo `file://` el `<base href="/cuentas-claras/">`
+apunta a la raíz del disco: la página carga sin estilos ni JavaScript y parece rota. Ya pasó una vez.
 
 Si la extensión de Chrome no está disponible, la lógica se puede probar en Node con un DOM
 simulado: basta con un `getElementById` que devuelva objetos con `value`, `textContent`,
 `addEventListener` y `setSelectionRange`, cargar los módulos con `eval` y disparar los manejadores
 a mano. Así se verificaron el conversor, IVA/IGTF, dividir y cuotas. **No cubre** lo que depende
 del DOM real: el renderizado y los campos dinámicos del modo "por consumo" de dividir la cuenta.
+
+Para las **rutas** el arnés de Node alcanza de sobra, y de hecho comprueba más que mirar la página:
+`new URL(relativa, base)` en Node aplica el mismo algoritmo WHATWG que el navegador usa para
+resolver el `<base href>`. Así se verificó que las 17 rutas únicas de las ocho páginas resuelven
+dentro de la subruta y devuelven 200, y que `marco.js` marca la página activa en las seis
+herramientas (más `conversor/index.html`, que tiene que contar como la misma que `conversor/`).
 
 Casos verificados a mano que deben seguir dando lo mismo:
 
@@ -235,12 +287,12 @@ quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es
 
 ## Próximos pasos
 
-1. **Arreglar las rutas para la subruta `/cuentas-claras`** y ajustar `servir.sh` para que las
-   pruebas locales representen el destino. Sin esto, desplegar da un sitio roto.
-2. **Desplegar**: seguir `infra/DEPLOY.md`, más ACM en us-east-1 y Route 53 para
-   `lapfreelance56.online`.
-3. **PWA** (manifiesto + service worker, sin cachear tasas).
-4. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor.
-5. El nombre "Cuentas Claras" quedó de hecho fijado por la subruta y la URL del repositorio.
+1. **Desplegar**: seguir `infra/DEPLOY.md`, más ACM en us-east-1 y Route 53 para
+   `lapfreelance56.online`. Es el siguiente paso real; ya no hay nada que lo bloquee.
+   Al terminar, correr las comprobaciones de "Comprobar que quedó bien" de `DEPLOY.md`: el fallo
+   de la subruta no da error, solo un sitio sin estilos.
+2. **PWA** (manifiesto + service worker, sin cachear tasas).
+3. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor.
+4. El nombre "Cuentas Claras" quedó de hecho fijado por la subruta y la URL del repositorio.
    Cambiarlo ya no es gratis: habría que tocar el código, el enlace de `/autor/`, la URL pública y
    el repositorio.

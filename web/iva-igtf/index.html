@@ -2,10 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <!-- Ruta base del sitio: vive en una subruta, no en la raiz del dominio.
+       Es la unica linea que sabe cual es; todas las rutas de abajo son
+       relativas a ella. -->
+  <base href="/cuentas-claras/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Calculadora de IVA e IGTF — Cuentas Claras</title>
   <meta name="description" content="Calcula el IVA (16%) y el IGTF (3%) de una factura en Venezuela, en bolívares o en dólares. Incluye el cálculo inverso desde el total cobrado.">
-  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body>
   <div class="encabezado">
@@ -94,10 +98,10 @@
     </section>
   </main>
 
-  <script src="/assets/js/formato.js"></script>
-  <script src="/assets/js/campo-monto.js"></script>
-  <script src="/assets/js/tasas.js"></script>
-  <script src="/assets/js/marco.js"></script>
-  <script src="/assets/js/iva-igtf.js"></script>
+  <script src="assets/js/formato.js"></script>
+  <script src="assets/js/campo-monto.js"></script>
+  <script src="assets/js/tasas.js"></script>
+  <script src="assets/js/marco.js"></script>
+  <script src="assets/js/iva-igtf.js"></script>
 </body>
 </html>

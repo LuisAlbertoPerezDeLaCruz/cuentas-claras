@@ -5,9 +5,11 @@ calcular IVA e IGTF, saber si hay banco el lunes, dividir una cuenta y comparar 
 contado contra las cuotas.
 
 Sitio estático, sin dependencias ni paso de compilación, servido desde un bucket S3 **privado** a
-través de CloudFront.
+través de CloudFront, en **<https://lapfreelance56.online/cuentas-claras/>**.
 
 ## Herramientas
+
+Todas cuelgan de `/cuentas-claras/`:
 
 | Ruta | Qué hace |
 |---|---|
@@ -26,8 +28,8 @@ Navegador ──▶ CloudFront (HTTPS + función en el borde) ──▶ Bucket S
 
 - **S3 privado**: el bucket no acepta tráfico público directo.
 - **Origin Access Control**: única vía de acceso al bucket, restringida a esta distribución.
-- **CloudFront Function**: resuelve `/conversor/` → `/conversor/index.html`, que S3 deja de hacer
-  al servirse por OAC.
+- **CloudFront Function**: resuelve `…/conversor/` → `…/conversor/index.html`, que S3 deja de hacer
+  al servirse por OAC, y manda la raíz del dominio a la subruta del sitio.
 - **Response Headers Policy**: HSTS, CSP, `X-Content-Type-Options` y `Referrer-Policy`.
 - **CloudFormation**: toda la infraestructura versionada en `infra/template.yaml`.
 
@@ -37,20 +39,34 @@ CloudFront (1 TB y 10 M peticiones) y CloudFront Functions (2 M invocaciones) no
 ## Estructura
 
 ```
-web/      el sitio (esto es lo que se sube al bucket)
-infra/    plantilla de CloudFormation y guía de despliegue
+web/      el sitio (esto es lo que se sube al bucket, bajo el prefijo cuentas-claras/)
+infra/    plantilla de CloudFormation, guía de despliegue y pruebas de la función del borde
 ```
+
+El sitio vive en una **subruta** del dominio, no en la raíz. Cada página lo declara con un
+`<base href="/cuentas-claras/">` en el `<head>` y todas sus rutas internas son relativas, así que
+esa línea es lo único que hay que tocar para moverlo de sitio.
 
 ## Probar localmente
 
 ```bash
 ./servir.sh
-# abre http://127.0.0.1:8765/
+# abre http://127.0.0.1:8765/cuentas-claras/
 ```
 
-No abras `web/index.html` con doble clic: las rutas son absolutas (`/assets/...`) porque el sitio
-vive en la raíz del dominio, y bajo `file://` esa barra apunta a la raíz del disco, así que no
-cargan ni el CSS ni el JavaScript.
+Sirve bajo la misma subruta que producción, y como CloudFront: la raíz redirige a la subruta y lo
+demás cae en la 404 del sitio.
+
+No abras `web/index.html` con doble clic: el `<base href="/cuentas-claras/">` apunta, bajo el
+protocolo `file://`, a la raíz del disco, así que no cargan ni el CSS ni el JavaScript y la página
+parece rota.
+
+Las rutas y la función del borde se prueban sin servidor ni navegador:
+
+```bash
+node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta y existen
+node infra/probar-funcion-rutas.js   # los casos de la función del borde
+```
 
 ## Desplegar
 

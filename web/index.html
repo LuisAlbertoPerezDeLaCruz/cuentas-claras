@@ -2,10 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <!-- Ruta base del sitio: vive en una subruta, no en la raiz del dominio.
+       Es la unica linea que sabe cual es; todas las rutas de abajo son
+       relativas a ella. -->
+  <base href="/cuentas-claras/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cuentas Claras — Herramientas del día a día en Venezuela</title>
   <meta name="description" content="Tasa del BCV y Binance, cálculo de IVA e IGTF, feriados bancarios, dividir la cuenta y comparar cuotas. Gratis y sin registro.">
-  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body>
   <div class="encabezado">
@@ -62,32 +66,32 @@
       <h2 id="titulo-herramientas">Herramientas</h2>
 
       <div class="enlaces">
-        <a class="enlace-herramienta" href="/conversor/">
+        <a class="enlace-herramienta" href="conversor/">
           <h3>Conversor de dólares</h3>
           <p>De dólares a bolívares y al revés, según BCV, Binance, euro y promedio.</p>
         </a>
 
-        <a class="enlace-herramienta" href="/iva-igtf/">
+        <a class="enlace-herramienta" href="iva-igtf/">
           <h3>IVA e IGTF</h3>
           <p>Cuánto cobrar, cuánto es impuesto y cuánto queda limpio.</p>
         </a>
 
-        <a class="enlace-herramienta" href="/feriados/">
+        <a class="enlace-herramienta" href="feriados/">
           <h3>Feriados y días hábiles</h3>
           <p>Próximo feriado bancario y días hábiles entre dos fechas.</p>
         </a>
 
-        <a class="enlace-herramienta" href="/dividir-cuenta/">
+        <a class="enlace-herramienta" href="dividir-cuenta/">
           <h3>Dividir la cuenta</h3>
           <p>Reparte con propina, en partes iguales o por consumo.</p>
         </a>
 
-        <a class="enlace-herramienta" href="/cuotas/">
+        <a class="enlace-herramienta" href="cuotas/">
           <h3>Cuotas y préstamos</h3>
           <p>Cuánto pagas de más al comprar en cuotas.</p>
         </a>
 
-        <a class="enlace-herramienta" href="/autor/">
+        <a class="enlace-herramienta" href="autor/">
           <h3>Sobre el autor</h3>
           <p>Quién hizo esto y cómo está montado en AWS.</p>
         </a>
@@ -95,9 +99,9 @@
     </section>
   </main>
 
-  <script src="/assets/js/formato.js"></script>
-  <script src="/assets/js/tasas.js"></script>
-  <script src="/assets/js/marco.js"></script>
+  <script src="assets/js/formato.js"></script>
+  <script src="assets/js/tasas.js"></script>
+  <script src="assets/js/marco.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       window.Tasas.iniciar();
