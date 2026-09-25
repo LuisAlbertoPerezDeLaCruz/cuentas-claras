@@ -20,7 +20,10 @@ Restricciones que marcan todas las decisiones:
   mano y la consola limpia.
 - ✅ `infra/template.yaml` escrita y validada como YAML; la función del borde probada con
   **19 casos** (`node infra/probar-funcion-rutas.js`).
-- ⬜ **Pendiente: desplegar.** No se ha creado ninguna pila ni bucket todavía.
+- ✅ **Desplegado el 25-sep-2026** en **https://lapfreelance56.online/cuentas-claras/**, con
+  certificado de ACM, dominio propio y el DNS movido de GoDaddy a Route 53. Comprobado: las siete
+  páginas en 200, la 404 del sitio, los tipos MIME de la PWA, HSTS y el bucket devolviendo 403 por
+  acceso directo.
 - ✅ **Subruta resuelta (25-sep-2026).** El sitio va en
   `https://lapfreelance56.online/cuentas-claras/` y ya está construido para eso: `<base href>` en
   cada página, rutas relativas, prefijo en el bucket, la función del borde rehecha y `servir.sh`
@@ -284,7 +287,7 @@ Trampas a revisar al planificar:
   de la subruta `/cuentas-claras/`, así que `sw.js` tampoco la interceptaría — pero conviene
   agregar el caso a `probar-sw.js` antes de moverla, no después.
 
-## Arquitectura AWS (por desplegar)
+## Arquitectura AWS
 
 S3 privado → CloudFront con Origin Access Control → visitante. Más una CloudFront Function que
 reescribe `/ruta/` a `/ruta/index.html`: **es obligatoria**, porque con bucket privado + OAC S3 deja
@@ -369,15 +372,12 @@ quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es
 
 ## Próximos pasos
 
-1. **Desplegar**: seguir `infra/DEPLOY.md`. En marcha desde el 25-sep-2026. El AWS CLI ya está
-   instalado (2.37.3, por Homebrew); falta `aws configure`, que lo hace Luis. El dominio hay que
-   moverlo de GoDaddy a Route 53 primero, ver arriba.
-   Al terminar, correr las comprobaciones de "Comprobar que quedó bien" de `DEPLOY.md`: el fallo
-   de la subruta no da error, solo un sitio sin estilos, y el de la PWA tampoco.
-2. **Mirar la PWA en Chrome.** La lógica está probada en Node, pero falta verla en
+1. **Mirar la PWA en Chrome.** La lógica está probada en Node, pero falta verla en
    DevTools > Application: que el manifiesto no dé advertencias, que el *scope* del service worker
    sea `/cuentas-claras/` y que en modo *Offline* las tarjetas de tasas digan "No disponible".
    Queda pendiente porque la extensión de Chrome no estaba conectada el 25-sep-2026.
+2. **Activar `www`** si se quiere: el certificado ya lo cubre, pero falta agregarlo como alias en
+   la plantilla (hoy sólo admite uno) y crear su registro en Route 53.
 3. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor. Ver "API
    (pendiente)".
 4. El nombre "Cuentas Claras" quedó de hecho fijado por la subruta y la URL del repositorio.

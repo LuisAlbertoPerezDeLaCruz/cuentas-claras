@@ -264,6 +264,27 @@ CERT=$(aws acm list-certificates --region us-east-1 \
 CloudFront vuelve a tardar entre 5 y 15 minutos. La plantilla sólo activa el dominio si **le das
 las dos cosas**, dominio y certificado: con una sola, CloudFront rechazaría el alias.
 
+⚠️ **Comprueba que los parámetros entraron de verdad.** Un `deploy` que falla (por ejemplo,
+lanzado desde otro directorio, donde `infra/template.yaml` no existe) deja la pila intacta con los
+parámetros vacíos, y el síntoma aparece mucho después y disfrazado: CloudFront sirve su
+certificado `*.cloudfront.net` en vez del tuyo y el navegador da un error de certificado, que
+parece un problema de ACM o de DNS y no lo es.
+
+```bash
+aws cloudformation describe-stacks --stack-name cuentas-claras \
+  --query 'Stacks[0].Parameters' --output table
+
+DIST=$(aws cloudformation describe-stacks --stack-name cuentas-claras \
+  --query "Stacks[0].Outputs[?OutputKey=='IdDistribucion'].OutputValue" --output text)
+
+aws cloudfront get-distribution --id "$DIST" \
+  --query 'Distribution.{Estado:Status,Alias:DistributionConfig.Aliases.Items,Certificado:DistributionConfig.ViewerCertificate}' \
+  --output json
+```
+
+`NombreDominio` y `CertificadoArn` no pueden estar vacíos, `Alias` tiene que traer el dominio y
+`Certificado` tu ARN de ACM en vez de `CloudFrontDefaultCertificate: true`.
+
 ### 5.6 Apuntar el dominio a CloudFront
 
 Un **registro A de tipo alias**, no un CNAME. El `HostedZoneId` de abajo (`Z2FDTNDATAQYW2`) es
