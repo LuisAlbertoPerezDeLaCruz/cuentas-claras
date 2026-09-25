@@ -193,54 +193,52 @@ dig NS lapfreelance56.online +short
 leyéndolo desde fuera; si el mundo todavía pregunta a GoDaddy, el registro que crees en Route 53
 no lo ve nadie y el certificado se queda en `PENDING_VALIDATION` sin explicar por qué.
 
-### 5.3 Pedir el certificado en us-east-1
+### 5.3 y 5.4 Pedir el certificado y validarlo
 
 **Sin excepción en `us-east-1`**: CloudFront no acepta certificados de ninguna otra región, y es el
 error que más tiempo hace perder aquí. La región del resto de la pila da igual.
 
+Se incluye `www` como nombre alternativo aunque el sitio se sirva en el dominio raíz. **A un
+certificado no se le pueden añadir nombres después**: habría que pedir otro y revalidar. Cubrirlo
+desde el principio no cuesta nada y deja la puerta abierta.
+
+Como el DNS ya está en Route 53, los registros de validación se crean solos: el bloque lee de ACM
+el CNAME que pide para cada nombre y lo publica en la zona.
+
 ```bash
+ZONA=$(aws route53 list-hosted-zones-by-name --dns-name lapfreelance56.online \
+  --query 'HostedZones[0].Id' --output text | cut -d/ -f3)
+
 CERT=$(aws acm request-certificate --region us-east-1 \
   --domain-name lapfreelance56.online \
+  --subject-alternative-names www.lapfreelance56.online \
   --validation-method DNS \
   --query CertificateArn --output text)
 
-echo $CERT
-```
+echo "CERT = $CERT"
 
-### 5.4 Validar el certificado
+# ACM tarda unos segundos en publicar los registros de validacion.
+sleep 15
 
-ACM dice qué registro CNAME hay que crear. Como el DNS ya está en Route 53, se puede crear con un
-comando en vez de a mano:
+aws acm describe-certificate --region us-east-1 --certificate-arn "$CERT" \
+  --query 'Certificate.DomainValidationOptions[].ResourceRecord.[Name,Value]' \
+  --output text | while read -r NAME VALUE; do
+    echo "  creando validacion: $NAME"
+    aws route53 change-resource-record-sets --hosted-zone-id "$ZONA" \
+      --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"$NAME\",\"Type\":\"CNAME\",\"TTL\":300,\"ResourceRecords\":[{\"Value\":\"$VALUE\"}]}}]}" \
+      --query 'ChangeInfo.Status' --output text
+  done
 
-```bash
-# El registro que pide ACM (puede tardar unos segundos en aparecer tras pedirlo).
-aws acm describe-certificate --region us-east-1 --certificate-arn $CERT \
-  --query 'Certificate.DomainValidationOptions[0].ResourceRecord'
-```
+aws acm wait certificate-validated --region us-east-1 --certificate-arn "$CERT"
 
-Con los valores `Name` y `Value` de arriba:
-
-```bash
-aws route53 change-resource-record-sets --hosted-zone-id $ZONA --change-batch '{
-  "Changes": [{
-    "Action": "UPSERT",
-    "ResourceRecordSet": {
-      "Name": "EL_NAME_QUE_DIJO_ACM",
-      "Type": "CNAME",
-      "TTL": 300,
-      "ResourceRecords": [{ "Value": "EL_VALUE_QUE_DIJO_ACM" }]
-    }
-  }]
-}'
-```
-
-Y a esperar a que quede `ISSUED` (normalmente unos minutos):
-
-```bash
-aws acm wait certificate-validated --region us-east-1 --certificate-arn $CERT
-aws acm describe-certificate --region us-east-1 --certificate-arn $CERT \
+aws acm describe-certificate --region us-east-1 --certificate-arn "$CERT" \
   --query 'Certificate.Status' --output text
 ```
+
+Tiene que acabar imprimiendo **`ISSUED`**. Con el DNS propagado tarda dos o tres minutos.
+
+Si se queda esperando mucho más, el motivo casi siempre es el del paso 5.2: los nameservers
+todavía no apuntan a Route 53, así que ACM no puede leer el registro que acabas de crear.
 
 ### 5.5 Volver a desplegar la pila con el dominio
 
@@ -253,6 +251,14 @@ aws cloudformation deploy \
     RutaBase=cuentas-claras \
     NombreDominio=lapfreelance56.online \
     CertificadoArn=$CERT
+```
+
+Si perdiste la variable `$CERT` (por ejemplo, abriste otra terminal), se recupera:
+
+```bash
+CERT=$(aws acm list-certificates --region us-east-1 \
+  --query "CertificateSummaryList[?DomainName=='lapfreelance56.online'].CertificateArn" \
+  --output text)
 ```
 
 CloudFront vuelve a tardar entre 5 y 15 minutos. La plantilla sólo activa el dominio si **le das
