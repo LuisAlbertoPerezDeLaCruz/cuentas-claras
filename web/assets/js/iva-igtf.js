@@ -13,6 +13,11 @@
 
   var modoInverso = false;
 
+  /* Lo que el usuario decidió sobre el IGTF. Se guarda aparte porque al pasar a
+     bolívares la casilla se fuerza apagada, y al volver a divisas hay que
+     devolverla como él la dejó, no siempre encendida ni siempre apagada. */
+  var igtfDeseado = true;
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -41,8 +46,12 @@
     var crudo = $('monto').value.trim();
     var moneda = $('moneda').value;
     var iva = Number($('iva').value) / 100;
-    var conIgtf = $('aplica-igtf').checked;
     var tasaBcv = window.Tasas.valores.bcv;
+
+    /* El IGTF grava los pagos en moneda distinta al bolívar. Si el pago es en
+       bolívares no aplica, marque lo que marque la casilla. */
+    var pagoEnDivisas = moneda === 'usd';
+    var conIgtf = pagoEnDivisas && $('aplica-igtf').checked;
 
     $('et-iva').textContent = '(' + $('iva').value + ' %)';
     $('simbolo').textContent = moneda === 'usd' ? '$' : 'Bs';
@@ -83,6 +92,12 @@
     // Cada importe se expresa en las dos monedas; si no hay tasa, solo en la elegida.
     var partes = { base: base, iva: montoIva, subtotal: subtotal, igtf: montoIgtf, total: total };
 
+    if (!pagoEnDivisas) {
+      $('v-igtf').textContent = 'No aplica';
+      $('e-igtf').textContent = 'Solo grava pagos en divisas';
+      delete partes.igtf;
+    }
+
     Object.keys(partes).forEach(function (clave) {
       var valor = partes[clave];
       var enUsd, enBs;
@@ -97,6 +112,19 @@
 
       pintar(clave, enUsd, enBs, moneda);
     });
+  }
+
+  function ajustarCasillaIgtf() {
+    var enBolivares = $('moneda').value === 'bs';
+    var casilla = $('aplica-igtf');
+
+    casilla.disabled = enBolivares;
+    casilla.checked = enBolivares ? false : igtfDeseado;
+
+    $('casilla-igtf').dataset.inactiva = enBolivares ? 'si' : 'no';
+    $('texto-igtf').textContent = enBolivares
+      ? 'IGTF: no aplica en bolívares'
+      : 'Cobrar IGTF (3 %)';
   }
 
   function cambiarModo(inverso) {
@@ -118,13 +146,20 @@
   document.addEventListener('DOMContentLoaded', function () {
     $('formulario').addEventListener('submit', function (e) { e.preventDefault(); });
     window.CampoMonto.activar($('monto'), calcular);
-    $('moneda').addEventListener('change', calcular);
+    $('moneda').addEventListener('change', function () {
+      ajustarCasillaIgtf();
+      calcular();
+    });
     $('iva').addEventListener('change', calcular);
-    $('aplica-igtf').addEventListener('change', calcular);
+    $('aplica-igtf').addEventListener('change', function () {
+      if (!$('aplica-igtf').disabled) igtfDeseado = $('aplica-igtf').checked;
+      calcular();
+    });
 
     $('modo-directo').addEventListener('click', function () { cambiarModo(false); });
     $('modo-inverso').addEventListener('click', function () { cambiarModo(true); });
 
+    ajustarCasillaIgtf();
     window.Tasas.iniciar(mostrarTasa);
   });
 })();

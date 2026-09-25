@@ -206,6 +206,8 @@ a { color: var(--acento); }
   padding: 12px 0;
 }
 .casilla input { width: 16px; height: 16px; accent-color: var(--acento); cursor: pointer; }
+.casilla[data-inactiva="si"] { opacity: 0.55; cursor: default; }
+.casilla[data-inactiva="si"] input { cursor: default; }
 
 .boton {
   border: 0;

@@ -31,10 +31,10 @@
         </label>
 
         <label class="campo" style="flex: 0 1 140px;">
-          <span class="campo-etiqueta">Moneda</span>
+          <span class="campo-etiqueta">Me pagan en</span>
           <div class="campo-control">
             <select id="moneda">
-              <option value="usd" selected>Dólares</option>
+              <option value="usd" selected>Divisas (USD)</option>
               <option value="bs">Bolívares</option>
             </select>
           </div>
@@ -51,9 +51,9 @@
           </div>
         </label>
 
-        <label class="casilla">
+        <label class="casilla" id="casilla-igtf">
           <input type="checkbox" id="aplica-igtf" checked>
-          <span>Pago en divisas (IGTF 3 %)</span>
+          <span id="texto-igtf">Cobrar IGTF (3 %)</span>
         </label>
       </form>
 
@@ -85,9 +85,10 @@
       <p class="nota" id="nota-tasa">Cargando la tasa del BCV para mostrar el equivalente…</p>
 
       <p class="nota">
-        El <strong>IGTF</strong> solo aplica cuando el pago se hace en moneda distinta al bolívar
-        (efectivo en divisas, transferencia internacional o criptomonedas). Si te pagan en
-        bolívares, desmarca la casilla: ahí solo va el IVA. El IGTF se calcula sobre el monto ya
+        El <strong>IGTF</strong> grava únicamente los pagos en moneda distinta al bolívar: efectivo
+        en divisas, transferencia internacional o criptomonedas. Por eso, al elegir
+        <strong>bolívares</strong> desaparece del cálculo. Si te pagan en divisas pero no debes
+        cobrarlo —por ejemplo si estás exento—, desmarca la casilla. Se calcula sobre el monto ya
         con IVA incluido.
       </p>
     </section>

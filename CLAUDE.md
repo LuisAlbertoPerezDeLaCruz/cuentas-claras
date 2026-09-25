@@ -99,6 +99,12 @@ horario no la corra un día.
   (Día de las Madres, Día del Periodista), lo que daría días hábiles mal contados en ambos
   sentidos. `assets/data/feriados-extra.json` permite añadir feriados decretados o regionales sin
   tocar código.
+- **En `/iva-igtf/` la moneda manda sobre el IGTF.** El selector es "Me pagan en", no una
+  preferencia de visualización: el IGTF grava solo pagos en moneda distinta al bolívar, así que al
+  elegir bolívares la casilla se apaga, se bloquea y la fila muestra "No aplica". La casilla sigue
+  existiendo para quien cobra en divisas pero está exento. La preferencia del usuario se guarda en
+  `igtfDeseado` porque al volver de bolívares a divisas hay que devolver la casilla como él la
+  dejó; forzarla a encendida o apagada da resultados incorrectos sin que se note.
 - **Los campos de dinero son `type="text"`, no `type="number"`.** Un `input[type=number]` no admite
   separadores de miles: el navegador considera "1.250.000" un valor inválido y lo descarta. Por eso
   existe `web/assets/js/campo-monto.js`, que formatea al escribir (1.250.000 y, al salir del campo,
@@ -148,6 +154,7 @@ Casos verificados a mano que deben seguir dando lo mismo:
 |---|---|---|
 | IVA/IGTF | base $100, IVA 16 %, con IGTF | 16,00 → 116,00 → 3,48 → **119,48** |
 | IVA/IGTF inverso | total $119,48 | base **100,00** |
+| IVA en bolívares | base 100 Bs, IVA 16 % | IGTF **No aplica**, total **116,00 Bs** |
 | Dividir | $50, 4 personas, 10 % | **13,75** c/u |
 | Dividir por consumo | 30 y 20, 10 % | **33,00** y **22,00** |
 | Cuotas | contado 100, 6 × 20 | sobrecosto 20 (20 %), **5,47 % mensual** = 89,51 % anual |
