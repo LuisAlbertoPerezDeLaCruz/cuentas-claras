@@ -56,10 +56,16 @@ plantilla, así que no se pueden quedar desfasadas):
 ```bash
 node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta y existen
 node infra/probar-funcion-rutas.js   # los casos de la función del borde
+node infra/probar-pwa.js             # manifiesto, armazón y versión del service worker
+node infra/probar-sw.js              # ejecuta el service worker y dispara sus manejadores
 ```
 
 `probar-rutas.js` contrasta el parámetro `RutaBase` contra el `<base href>` de las ocho páginas: es
 el desajuste que deja el sitio sin estilos y que ningún validador detecta.
+
+`probar-pwa.js` falla si `VERSION` de `sw.js` no corresponde al contenido actual. **Séllalo antes
+de subir** con `node infra/probar-pwa.js --sellar`, o quien ya tenga la PWA instalada seguirá
+viendo la versión anterior.
 
 ## 2. Crear la pila
 
@@ -134,34 +140,150 @@ Invalidar `/*` cuenta como **una sola** ruta.
 
 ## 5. Dominio propio
 
-El dominio ya está registrado: **`lapfreelance56.online`**.
+El dominio **`lapfreelance56.online`** está registrado en **GoDaddy**, y su DNS también lo sirve
+GoDaddy (`ns63/ns64.domaincontrol.com`). Hay que mover el DNS a Route 53.
 
-1. Pide el certificado **en la región `us-east-1`**, sin excepción: CloudFront no acepta
-   certificados de ninguna otra región, y es el error que más tiempo hace perder aquí.
+⚠️ **Por qué no basta con dejarlo en GoDaddy.** El sitio va en el dominio **raíz**, y un dominio
+raíz **no admite CNAME**: es una regla del DNS, no una limitación de GoDaddy. Lo que sí puede
+apuntar la raíz a CloudFront es un **registro A de tipo alias**, y ese tipo de registro sólo
+existe dentro de Route 53. Desde GoDaddy la única alternativa sería usar `www` y reenviar la raíz,
+que es un salto HTTP por servidores de terceros.
 
-   ```bash
-   aws acm request-certificate --region us-east-1 \
-     --domain-name lapfreelance56.online --validation-method DNS
-   ```
+El dominio está limpio (sin MX ni TXT: nada de correo ni verificaciones), así que mover el DNS no
+rompe nada.
 
-2. Valida el certificado creando el registro CNAME que indique ACM, y espera a que quede
-   `ISSUED`.
-3. Vuelve a desplegar pasando el dominio y el ARN:
+### 5.1 Crear la zona alojada en Route 53
 
-   ```bash
-   aws cloudformation deploy \
-     --template-file infra/template.yaml \
-     --stack-name cuentas-claras \
-     --parameter-overrides \
-       NombreProyecto=cuentas-claras \
-       RutaBase=cuentas-claras \
-       NombreDominio=lapfreelance56.online \
-       CertificadoArn=arn:aws:acm:us-east-1:TU_CUENTA:certificate/TU_ID
-   ```
+```bash
+aws route53 create-hosted-zone \
+  --name lapfreelance56.online \
+  --caller-reference "cuentas-claras-$(date +%s)"
+```
 
-4. Apunta el dominio a CloudFront. En Route 53, un registro **A de tipo alias** hacia la
-   distribución (no un CNAME: el dominio raíz no admite CNAME). Fuera de Route 53, usa el valor
-   de la salida `DominioParaDNS`.
+Guarda el `Id` que devuelve (con la forma `/hostedzone/Z0123…`; en los comandos de abajo va sólo
+la parte `Z0123…`). Apunta también los cuatro nameservers que trae la respuesta en
+`DelegationSet.NameServers`. Si ya la creaste antes y sólo quieres verlos:
+
+```bash
+ZONA=$(aws route53 list-hosted-zones-by-name --dns-name lapfreelance56.online \
+  --query 'HostedZones[0].Id' --output text | cut -d/ -f3)
+
+aws route53 get-hosted-zone --id $ZONA --query 'DelegationSet.NameServers' --output table
+```
+
+Desde aquí, **$0,50/mes** por la zona. Es el único costo fijo del proyecto.
+
+### 5.2 Cambiar los nameservers en GoDaddy
+
+En el panel de GoDaddy: *Mis productos > Dominios > lapfreelance56.online > DNS > Nameservers >
+Cambiar > Usar mis propios nameservers*, y pones los cuatro de Route 53.
+
+Esto lo haces tú a mano en el navegador; no se puede desde el AWS CLI porque el registrador no es
+AWS.
+
+**Espera a que el cambio surta efecto antes de seguir.** Suele tardar entre minutos y un par de
+horas (el límite teórico son 48 h). Comprobación:
+
+```bash
+dig NS lapfreelance56.online +short
+# tiene que devolver los ns-…awsdns-… de Route 53, no los domaincontrol.com de GoDaddy
+```
+
+⚠️ **No pidas el certificado antes de esto.** ACM valida creando un registro DNS y luego
+leyéndolo desde fuera; si el mundo todavía pregunta a GoDaddy, el registro que crees en Route 53
+no lo ve nadie y el certificado se queda en `PENDING_VALIDATION` sin explicar por qué.
+
+### 5.3 Pedir el certificado en us-east-1
+
+**Sin excepción en `us-east-1`**: CloudFront no acepta certificados de ninguna otra región, y es el
+error que más tiempo hace perder aquí. La región del resto de la pila da igual.
+
+```bash
+CERT=$(aws acm request-certificate --region us-east-1 \
+  --domain-name lapfreelance56.online \
+  --validation-method DNS \
+  --query CertificateArn --output text)
+
+echo $CERT
+```
+
+### 5.4 Validar el certificado
+
+ACM dice qué registro CNAME hay que crear. Como el DNS ya está en Route 53, se puede crear con un
+comando en vez de a mano:
+
+```bash
+# El registro que pide ACM (puede tardar unos segundos en aparecer tras pedirlo).
+aws acm describe-certificate --region us-east-1 --certificate-arn $CERT \
+  --query 'Certificate.DomainValidationOptions[0].ResourceRecord'
+```
+
+Con los valores `Name` y `Value` de arriba:
+
+```bash
+aws route53 change-resource-record-sets --hosted-zone-id $ZONA --change-batch '{
+  "Changes": [{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {
+      "Name": "EL_NAME_QUE_DIJO_ACM",
+      "Type": "CNAME",
+      "TTL": 300,
+      "ResourceRecords": [{ "Value": "EL_VALUE_QUE_DIJO_ACM" }]
+    }
+  }]
+}'
+```
+
+Y a esperar a que quede `ISSUED` (normalmente unos minutos):
+
+```bash
+aws acm wait certificate-validated --region us-east-1 --certificate-arn $CERT
+aws acm describe-certificate --region us-east-1 --certificate-arn $CERT \
+  --query 'Certificate.Status' --output text
+```
+
+### 5.5 Volver a desplegar la pila con el dominio
+
+```bash
+aws cloudformation deploy \
+  --template-file infra/template.yaml \
+  --stack-name cuentas-claras \
+  --parameter-overrides \
+    NombreProyecto=cuentas-claras \
+    RutaBase=cuentas-claras \
+    NombreDominio=lapfreelance56.online \
+    CertificadoArn=$CERT
+```
+
+CloudFront vuelve a tardar entre 5 y 15 minutos. La plantilla sólo activa el dominio si **le das
+las dos cosas**, dominio y certificado: con una sola, CloudFront rechazaría el alias.
+
+### 5.6 Apuntar el dominio a CloudFront
+
+Un **registro A de tipo alias**, no un CNAME. El `HostedZoneId` de abajo (`Z2FDTNDATAQYW2`) es
+fijo y público: es el de CloudFront, igual para todas las cuentas y todas las distribuciones.
+
+```bash
+DOMINIO_CF=$(aws cloudformation describe-stacks --stack-name cuentas-claras \
+  --query "Stacks[0].Outputs[?OutputKey=='DominioParaDNS'].OutputValue" --output text)
+
+aws route53 change-resource-record-sets --hosted-zone-id $ZONA --change-batch "{
+  \"Changes\": [{
+    \"Action\": \"UPSERT\",
+    \"ResourceRecordSet\": {
+      \"Name\": \"lapfreelance56.online\",
+      \"Type\": \"A\",
+      \"AliasTarget\": {
+        \"HostedZoneId\": \"Z2FDTNDATAQYW2\",
+        \"DNSName\": \"$DOMINIO_CF\",
+        \"EvaluateTargetHealth\": false
+      }
+    }
+  }]
+}"
+```
+
+El alias no cuesta nada: Route 53 no cobra las consultas resueltas por un alias a CloudFront.
 
 ## Actualizar el sitio después
 
@@ -258,6 +380,9 @@ Conviene igual poner una alarma de facturación en Budgets, por si algún día e
 | El service worker toma todo el dominio | `sw.js` se subió a la raíz del bucket en vez de al prefijo |
 | Sin conexión se ven tasas | Algo está cacheando las tasas: correr `node infra/probar-sw.js` |
 | CloudFront rechaza el certificado | No está en `us-east-1` |
+| El certificado no sale de `PENDING_VALIDATION` | Los nameservers de GoDaddy todavía no apuntan a Route 53, así que nadie ve el registro de validación (paso 5.2) |
+| El dominio no resuelve tras cambiar los nameservers | Todavía propagando; comprobar con `dig NS lapfreelance56.online +short` |
+| `CNAMEAlreadyExists` al desplegar | Otra distribución de CloudFront ya tiene ese alias |
 
 ## Borrar todo
 

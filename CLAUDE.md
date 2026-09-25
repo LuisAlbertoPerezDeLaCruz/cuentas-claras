@@ -196,6 +196,13 @@ redirección. La función cubre todos los índices, ese incluido.
 **Pendiente de la subruta, del lado de AWS:** certificado ACM **en us-east-1** (lo exige CloudFront,
 no sirve en otra región) y registros en Route 53 — el único costo fijo real, ~$0,50/mes.
 
+⚠️ **El dominio está en GoDaddy, no en Route 53** (comprobado el 25-sep-2026: los nameservers son
+`ns63/ns64.domaincontrol.com`). Hay que mover el DNS a Route 53 antes de pedir el certificado,
+porque el sitio va en el dominio **raíz** y un dominio raíz **no admite CNAME**: lo único que puede
+apuntarlo a CloudFront es un registro **A de tipo alias**, que sólo existe dentro de Route 53. El
+dominio está limpio (sin MX ni TXT), así que mover el DNS no rompe nada. Pasos en `DEPLOY.md` 5.1
+a 5.6.
+
 ## PWA
 
 **Hecha el 25-sep-2026.** El sitio se instala y funciona sin conexión. Piezas:
@@ -362,8 +369,9 @@ quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es
 
 ## Próximos pasos
 
-1. **Desplegar**: seguir `infra/DEPLOY.md`, más ACM en us-east-1 y Route 53 para
-   `lapfreelance56.online`. Es el siguiente paso real; ya no hay nada que lo bloquee.
+1. **Desplegar**: seguir `infra/DEPLOY.md`. En marcha desde el 25-sep-2026. El AWS CLI ya está
+   instalado (2.37.3, por Homebrew); falta `aws configure`, que lo hace Luis. El dominio hay que
+   moverlo de GoDaddy a Route 53 primero, ver arriba.
    Al terminar, correr las comprobaciones de "Comprobar que quedó bien" de `DEPLOY.md`: el fallo
    de la subruta no da error, solo un sitio sin estilos, y el de la PWA tampoco.
 2. **Mirar la PWA en Chrome.** La lógica está probada en Node, pero falta verla en
