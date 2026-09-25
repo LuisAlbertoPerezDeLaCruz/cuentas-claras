@@ -66,16 +66,16 @@
 
   function calcular() {
     var cajaError = $('error-monto');
-    var crudo = $('monto').value.trim();
 
-    if (crudo === '') {
+    if ($('monto').value.trim() === '') {
       cajaError.hidden = true;
       limpiarResultados('—');
       return;
     }
 
-    var monto = F.aNumeroPositivo(crudo);
-    if (monto === null) {
+    // El campo lleva separadores de miles, así que se lee con CampoMonto.
+    var monto = window.CampoMonto.valor($('monto'));
+    if (monto === null || monto <= 0) {
       cajaError.textContent = modoInverso
         ? 'Ingresa un monto en bolívares mayor que cero.'
         : 'Ingresa un monto en dólares mayor que cero.';
@@ -112,7 +112,7 @@
       ? 'Monto en bolívares (Bs)'
       : 'Monto en dólares (USD)';
     $('simbolo').textContent = inverso ? 'Bs' : '$';
-    $('monto').placeholder = inverso ? '10000' : '100';
+    $('monto').placeholder = inverso ? '1.000.000,00' : '100,00';
 
     pintarFormulas();
     calcular();
@@ -125,7 +125,7 @@
       evento.preventDefault();
     });
 
-    $('monto').addEventListener('input', function () {
+    window.CampoMonto.activar($('monto'), function () {
       montos[claveModo()] = $('monto').value;
       calcular();
     });

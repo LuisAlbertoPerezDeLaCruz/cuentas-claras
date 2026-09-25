@@ -71,8 +71,8 @@
         '" aria-label="Nombre de la persona ' + (i + 1) + '" ' +
         'style="flex:1;background:transparent;border:0;color:inherit;font:inherit;outline:none;">' +
         '<span class="fecha-item">' + simbolo + ' ' +
-        '<input class="monto-persona" data-i="' + i + '" type="number" step="0.01" min="0" ' +
-        'value="' + c.monto + '" placeholder="0" aria-label="Consumo de ' + c.nombre + '" ' +
+        '<input class="monto-persona" data-i="' + i + '" type="text" inputmode="decimal" ' +
+        'value="' + c.monto + '" placeholder="0,00" aria-label="Consumo de ' + c.nombre + '" ' +
         'style="width:90px;background:transparent;border:0;color:inherit;font:inherit;' +
         'text-align:right;outline:none;">' +
         '</span></li>';
@@ -84,8 +84,9 @@
       });
     });
 
+    // Los campos se recrean en cada pintado, así que se vuelven a conectar.
     Array.prototype.forEach.call(document.querySelectorAll('.monto-persona'), function (el) {
-      el.addEventListener('input', function () {
+      window.CampoMonto.activar(el, function () {
         comensales[Number(el.dataset.i)].monto = el.value;
         calcular();
       });
@@ -105,7 +106,7 @@
 
     if (porConsumo) {
       var montos = comensales.map(function (c) {
-        return c.monto.trim() === '' ? 0 : F.aNumeroNoNegativo(c.monto.trim());
+        return c.monto.trim() === '' ? 0 : window.CampoMonto.valor(c.monto);
       });
 
       if (montos.some(function (m) { return m === null; })) {
@@ -150,8 +151,8 @@
       return;
     }
 
-    var cuentaIgual = F.aNumeroPositivo(crudo);
-    if (cuentaIgual === null) return error('Ingresa un total mayor que cero.');
+    var cuentaIgual = window.CampoMonto.valor($('total'));
+    if (cuentaIgual === null || cuentaIgual <= 0) return error('Ingresa un total mayor que cero.');
 
     var personas = F.aEnteroPositivo($('personas').value.trim());
     if (personas === null) return error('El número de personas debe ser 1 o más.');
@@ -192,7 +193,9 @@
   document.addEventListener('DOMContentLoaded', function () {
     $('formulario').addEventListener('submit', function (e) { e.preventDefault(); });
 
-    ['total', 'personas', 'propina'].forEach(function (id) {
+    window.CampoMonto.activar($('total'), calcular);
+
+    ['personas', 'propina'].forEach(function (id) {
       $(id).addEventListener('input', calcular);
     });
 

@@ -25,8 +25,8 @@
           <span class="campo-etiqueta">Precio de contado</span>
           <div class="campo-control">
             <span class="prefijo">$</span>
-            <input type="number" id="contado" inputmode="decimal" step="0.01" min="0"
-                   placeholder="100" autocomplete="off">
+            <input type="text" id="contado" inputmode="decimal"
+                   placeholder="100,00" autocomplete="off">
           </div>
         </label>
 
@@ -42,8 +42,8 @@
           <span class="campo-etiqueta">Monto de cada cuota</span>
           <div class="campo-control">
             <span class="prefijo">$</span>
-            <input type="number" id="monto-cuota" inputmode="decimal" step="0.01" min="0"
-                   placeholder="20" autocomplete="off">
+            <input type="text" id="monto-cuota" inputmode="decimal"
+                   placeholder="20,00" autocomplete="off">
           </div>
         </label>
       </form>
@@ -53,8 +53,8 @@
           <span class="campo-etiqueta">Monto del préstamo</span>
           <div class="campo-control">
             <span class="prefijo">$</span>
-            <input type="number" id="capital" inputmode="decimal" step="0.01" min="0"
-                   placeholder="1000" autocomplete="off">
+            <input type="text" id="capital" inputmode="decimal"
+                   placeholder="1.000,00" autocomplete="off">
           </div>
         </label>
 
@@ -122,6 +122,7 @@
   </main>
 
   <script src="/assets/js/formato.js"></script>
+  <script src="/assets/js/campo-monto.js"></script>
   <script src="/assets/js/marco.js"></script>
   <script src="/assets/js/cuotas.js"></script>
 </body>

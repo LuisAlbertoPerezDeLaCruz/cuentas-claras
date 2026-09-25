@@ -84,12 +84,12 @@
       return;
     }
 
-    var contado = F.aNumeroPositivo(contadoCrudo);
-    var cuota = F.aNumeroPositivo(cuotaCrudo);
+    var contado = window.CampoMonto.valor($('contado'));
+    var cuota = window.CampoMonto.valor($('monto-cuota'));
     var n = F.aEnteroPositivo($('n-cuotas').value.trim());
 
-    if (contado === null) { error('El precio de contado debe ser mayor que cero.'); limpiarCompra(); return; }
-    if (cuota === null) { error('El monto de la cuota debe ser mayor que cero.'); limpiarCompra(); return; }
+    if (contado === null || contado <= 0) { error('El precio de contado debe ser mayor que cero.'); limpiarCompra(); return; }
+    if (cuota === null || cuota <= 0) { error('El monto de la cuota debe ser mayor que cero.'); limpiarCompra(); return; }
     if (n === null) { error('El número de cuotas debe ser 1 o más.'); limpiarCompra(); return; }
 
     error(null);
@@ -130,11 +130,11 @@
       return;
     }
 
-    var capital = F.aNumeroPositivo(capitalCrudo);
+    var capital = window.CampoMonto.valor($('capital'));
     var anual = F.aNumeroNoNegativo(tasaCruda);
     var meses = F.aEnteroPositivo($('meses').value.trim());
 
-    if (capital === null) { error('El monto del préstamo debe ser mayor que cero.'); limpiarPrestamo(); return; }
+    if (capital === null || capital <= 0) { error('El monto del préstamo debe ser mayor que cero.'); limpiarPrestamo(); return; }
     if (anual === null) { error('La tasa anual no puede ser negativa.'); limpiarPrestamo(); return; }
     if (meses === null) { error('El plazo debe ser de 1 mes o más.'); limpiarPrestamo(); return; }
 
@@ -181,7 +181,11 @@
     $('form-compra').addEventListener('submit', function (e) { e.preventDefault(); });
     $('form-prestamo').addEventListener('submit', function (e) { e.preventDefault(); });
 
-    ['contado', 'n-cuotas', 'monto-cuota', 'capital', 'tasa-anual', 'meses'].forEach(function (id) {
+    ['contado', 'monto-cuota', 'capital'].forEach(function (id) {
+      window.CampoMonto.activar($(id), calcular);
+    });
+
+    ['n-cuotas', 'tasa-anual', 'meses'].forEach(function (id) {
       $(id).addEventListener('input', calcular);
     });
 

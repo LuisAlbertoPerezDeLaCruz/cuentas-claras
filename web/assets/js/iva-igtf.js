@@ -53,8 +53,9 @@
       return;
     }
 
-    var monto = F.aNumeroPositivo(crudo);
-    if (monto === null) {
+    // El campo lleva separadores de miles: se lee con CampoMonto, no con parseFloat.
+    var monto = window.CampoMonto.valor($('monto'));
+    if (monto === null || monto <= 0) {
       cajaError.textContent = 'Ingresa un monto mayor que cero.';
       cajaError.hidden = false;
       limpiar('—');
@@ -116,7 +117,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     $('formulario').addEventListener('submit', function (e) { e.preventDefault(); });
-    $('monto').addEventListener('input', calcular);
+    window.CampoMonto.activar($('monto'), calcular);
     $('moneda').addEventListener('change', calcular);
     $('iva').addEventListener('change', calcular);
     $('aplica-igtf').addEventListener('change', calcular);

@@ -99,6 +99,13 @@ horario no la corra un día.
   (Día de las Madres, Día del Periodista), lo que daría días hábiles mal contados en ambos
   sentidos. `assets/data/feriados-extra.json` permite añadir feriados decretados o regionales sin
   tocar código.
+- **Los campos de dinero son `type="text"`, no `type="number"`.** Un `input[type=number]` no admite
+  separadores de miles: el navegador considera "1.250.000" un valor inválido y lo descarta. Por eso
+  existe `web/assets/js/campo-monto.js`, que formatea al escribir (1.250.000 y, al salir del campo,
+  1.250.000,00) y restaura la posición del cursor. **Esos campos nunca deben leerse con
+  `parseFloat` ni con `Formato.aNumeroPositivo`**: `parseFloat("1.250.000")` devuelve `1,25`. Se
+  leen siempre con `CampoMonto.valor(input)`. Los campos que no son dinero (personas, número de
+  cuotas, plazos y porcentajes) siguen siendo `type="number"` y se leen como antes.
 - **`[hidden]` no basta.** Los componentes fijan su propio `display`, que le gana al atributo. En
   `base.css` hay una regla `[hidden] { display: none !important; }`; sin ella, ocultar campos desde
   JavaScript no surte efecto.
@@ -147,6 +154,7 @@ Casos verificados a mano que deben seguir dando lo mismo:
 | Préstamo | 1.000, 60 % anual, 12 meses | cuota **112,83**, total 1.353,90, intereses 353,90 |
 | Días hábiles | 24/09/2026 → 24/10/2026 | 31 totales, 9 finde, 1 feriado, **21 hábiles** |
 | Conversor inverso | 100.000 Bs con BCV 855,6625 | **$116,87** (ida y vuelta devuelve el monto original) |
+| Formato de entrada | teclear `1250000` | se ve **1.250.000** y, al salir del campo, **1.250.000,00** |
 
 ## Próximos pasos
 
