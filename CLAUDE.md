@@ -21,6 +21,10 @@ Restricciones que marcan todas las decisiones:
 - ✅ `infra/template.yaml` escrita y validada como YAML; la función de reescritura de rutas
   probada con cinco casos.
 - ⬜ **Pendiente: desplegar.** No se ha creado ninguna pila ni bucket todavía.
+- ⬜ **Dominio ya registrado: `lapfreelance56.online`.** El sitio va en
+  `https://lapfreelance56.online/cuentas-claras` — **en una subruta, no en la raíz**. Ver
+  "Servir bajo una subruta" más abajo: invalida el supuesto de las rutas absolutas.
+- ⬜ **Alcance nuevo (25-sep-2026): PWA y una API propia.** Ver "PWA y API".
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
   texto propio de Luis, no inventado: **no reescribirlo**.
 - ✅ **Publicado en GitHub**: https://github.com/LuisAlbertoPerezDeLaCruz/cuentas-claras (público).
@@ -48,8 +52,9 @@ Sin paso de compilación y sin dependencias: HTML, CSS y JS planos. Una página 
 Los módulos se exponen como globales (`window.Formato`, `window.Tasas`) en vez de módulos ES, para
 no depender de que S3 sirva el tipo MIME correcto.
 
-**Las rutas internas son absolutas** (`/conversor/`, `/assets/...`) porque el sitio vive en la raíz
-del dominio.
+**Las rutas internas son absolutas** (`/conversor/`, `/assets/...`) porque se construyeron
+asumiendo que el sitio vivía en la raíz del dominio. ⚠️ **Ese supuesto ya no se cumple**: el
+destino es `lapfreelance56.online/cuentas-claras`. Ver "Servir bajo una subruta".
 
 ## Las herramientas
 
@@ -125,6 +130,56 @@ horario no la corra un día.
   y obtiene un enlace público con los precios en Bs actualizados solos), que no sufre el arranque
   en frío de un mapa de precios comunitario.
 
+## Servir bajo una subruta (⚠️ antes de desplegar)
+
+El destino es `https://lapfreelance56.online/cuentas-claras`, **no** la raíz del dominio. Todo el
+sitio se escribió al revés, así que esto hay que resolverlo **antes** del primer despliegue.
+
+Lo que se rompe: cada ruta absoluta (`/conversor/`, `/assets/css/base.css`) apunta fuera de la
+aplicación. El síntoma es el sitio sin CSS ni JavaScript — el mismo que da abrir `index.html` con
+doble clic. No falla al validar la plantilla: falla en el navegador, ya desplegado.
+
+Tres decisiones encadenadas:
+
+1. **Cómo se monta la subruta en AWS**: bucket con prefijo `cuentas-claras/` más *Origin Path* en
+   CloudFront, o un *cache behavior* con patrón `/cuentas-claras/*`. En los dos casos el navegador
+   sigue viendo la URL completa: **el Origin Path no arregla las rutas del HTML**.
+2. **Cómo se arreglan las rutas del HTML**: prefijarlas todas, o un `<base href="/cuentas-claras/">`
+   con rutas relativas. Lo segundo es un cambio más chico, pero hay que verificar que `marco.js` y
+   los enlaces que genera el JS lo respeten. Sea cual sea, **`servir.sh` tiene que servir bajo la
+   misma subruta** o las pruebas locales dejan de representar el destino real.
+3. **La CloudFront Function**: hoy convierte `/ruta/` en `/ruta/index.html` asumiendo la raíz. Hay
+   que decidir si recibe el prefijo o si el Origin Path ya lo quitó. **Sus cinco casos de prueba
+   quedan obsoletos**: rehacerlos.
+
+Además: certificado ACM **en us-east-1** (lo exige CloudFront, no sirve en otra región) y registros
+en Route 53 — el único costo fijo real, ~$0,50/mes.
+
+## PWA y API
+
+Alcance pedido por Luis el 25-sep-2026.
+
+**La API revierte la decisión de "sin backend"** que está documentada más abajo: ya no es una
+restricción vigente. La que sí sigue en pie es *sin EC2 ni servidores que administrar* y costo de
+centavos — o sea API Gateway + Lambda, nunca una instancia. El motivo es explícito: su curso de AWS
+cubre cómo incluir APIs, y quiere aprenderlo y demostrarlo.
+
+Mejor primer candidato: **una Lambda que lea `bcv.org.ve` del lado servidor**. Resuelve el problema
+de CORS documentado en "Fuentes de datos" — hoy no se consulta el BCV de primera mano justamente
+porque las peticiones salen del navegador del visitante. Es un problema real ya diagnosticado, no
+un ejercicio inventado. La *lista de precios para comercios* sigue siendo buena idea, pero es
+bastante más grande.
+
+Trampas a revisar al planificar:
+
+- **PWA + tasas**: un service worker con estrategia *cache-first* serviría tasas viejas como si
+  fueran del día. Es el peor fallo posible en esta aplicación. **Las tasas nunca van a caché de
+  service worker.**
+- **PWA + subruta**: el `scope` del service worker y el `start_url` del manifiesto dependen de la
+  ruta base. Resolver primero "Servir bajo una subruta".
+- **API + CSP**: hay que **agregar el dominio de la API a `connect-src`** en la plantilla, o dejará
+  de cargar sin error visible en la página.
+
 ## Arquitectura AWS (por desplegar)
 
 S3 privado → CloudFront con Origin Access Control → visitante. Más una CloudFront Function que
@@ -180,6 +235,12 @@ quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es
 
 ## Próximos pasos
 
-1. **Desplegar**: seguir `infra/DEPLOY.md`.
-2. Decidir el nombre definitivo y, si aplica, registrar dominio. Ojo: el nombre ya no vive solo
-   en el código, también está en la URL del repositorio y en el enlace de `/autor/`.
+1. **Arreglar las rutas para la subruta `/cuentas-claras`** y ajustar `servir.sh` para que las
+   pruebas locales representen el destino. Sin esto, desplegar da un sitio roto.
+2. **Desplegar**: seguir `infra/DEPLOY.md`, más ACM en us-east-1 y Route 53 para
+   `lapfreelance56.online`.
+3. **PWA** (manifiesto + service worker, sin cachear tasas).
+4. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor.
+5. El nombre "Cuentas Claras" quedó de hecho fijado por la subruta y la URL del repositorio.
+   Cambiarlo ya no es gratis: habría que tocar el código, el enlace de `/autor/`, la URL pública y
+   el repositorio.
