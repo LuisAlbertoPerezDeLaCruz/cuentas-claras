@@ -14,15 +14,16 @@ Restricciones que marcan todas las decisiones:
 - **Luis administra AWS**. Aquí se entregan código, plantilla y guía; no se ejecutan acciones en
   su cuenta.
 
-## Estado (24-sep-2026)
+## Estado (25-sep-2026)
 
 - ✅ Seis páginas construidas y **verificadas en el navegador**, con los cálculos contrastados a
   mano y la consola limpia.
 - ✅ `infra/template.yaml` escrita y validada como YAML; la función de reescritura de rutas
   probada con cinco casos.
 - ⬜ **Pendiente: desplegar.** No se ha creado ninguna pila ni bucket todavía.
-- ⬜ **Pendiente en la página de autor**: el enlace `[TU GITHUB]`. El correo ya está puesto.
-  El nombre y la bio ya están puestos (texto propio de Luis, no inventado: no reescribirlo).
+- ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
+  texto propio de Luis, no inventado: **no reescribirlo**.
+- ✅ **Publicado en GitHub**: https://github.com/LuisAlbertoPerezDeLaCruz/cuentas-claras (público).
 - ⬜ El nombre "Cuentas Claras" es una propuesta. Alternativas barajadas: *Cuadre*, *Al Día VE*.
   Cambiarlo es barato: vive en `web/assets/js/marco.js` (constantes `NOMBRE` y `NOMBRE_ACENTO`)
   y en los `<title>` de cada página.
@@ -169,11 +170,16 @@ Casos verificados a mano que deben seguir dando lo mismo:
 | Conversor inverso | 100.000 Bs con BCV 855,6625 | **$116,87** (ida y vuelta devuelve el monto original) |
 | Formato de entrada | teclear `1250000` | se ve **1.250.000** y, al salir del campo, **1.250.000,00** |
 
+## Git y GitHub
+
+Remoto: `git@github.com:LuisAlbertoPerezDeLaCruz/cuentas-claras.git` (SSH).
+
+⚠️ **No usar los alias de `~/.ssh/config`** (`github.com-LuisAlbertoPerezDeLaCruz`): esa clave
+quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es la que usa el host
+`github.com` a secas. Luis tiene tres cuentas de GitHub configuradas, de ahí los alias.
+
 ## Próximos pasos
 
 1. **Desplegar**: seguir `infra/DEPLOY.md`.
-2. Rellenar los marcadores de `/autor/`.
-3. Decidir el nombre definitivo y, si aplica, registrar dominio.
-4. **Iniciar un repositorio git y publicarlo**: hoy la carpeta no tiene control de versiones, y
-   para promocionarse como desarrollador el repositorio con la plantilla de infraestructura vale
-   tanto como el sitio.
+2. Decidir el nombre definitivo y, si aplica, registrar dominio. Ojo: el nombre ya no vive solo
+   en el código, también está en la URL del repositorio y en el enlace de `/autor/`.
