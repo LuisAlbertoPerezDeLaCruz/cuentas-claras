@@ -258,7 +258,7 @@ del DOM real: el renderizado y los campos dinámicos del modo "por consumo" de d
 
 Para las **rutas** el arnés de Node alcanza de sobra, y de hecho comprueba más que mirar la página:
 `new URL(relativa, base)` en Node aplica el mismo algoritmo WHATWG que el navegador usa para
-resolver el `<base href>`. Así se verificó que las 17 rutas únicas de las ocho páginas resuelven
+resolver el `<base href>`. Así se verificó que las 18 rutas únicas de las ocho páginas resuelven
 dentro de la subruta y devuelven 200, y que `marco.js` marca la página activa en las seis
 herramientas (más `conversor/index.html`, que tiene que contar como la misma que `conversor/`).
 
