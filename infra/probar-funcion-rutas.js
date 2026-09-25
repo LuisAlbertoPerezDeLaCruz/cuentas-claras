@@ -65,6 +65,12 @@ const CASOS = [
   [B + '/assets/data/feriados-extra.json',
                                       { reescribe: B + '/assets/data/feriados-extra.json' }],
 
+  // Las dos piezas de la PWA. Llevan punto, asi que la funcion las deja pasar
+  // tal cual; el service worker tiene que servirse desde DENTRO de la subruta o
+  // su alcance no podria cubrirla.
+  [B + '/sw.js',                      { reescribe: B + '/sw.js' }],
+  [B + '/manifest.webmanifest',       { reescribe: B + '/manifest.webmanifest' }],
+
   // Fuera de la subruta: no existe en el bucket, S3 da 403 y CloudFront
   // responde con la 404 del sitio. La funcion no tiene que hacer nada especial.
   ['/otra-cosa',                      { redireccion: 301, destino: '/otra-cosa/' }],

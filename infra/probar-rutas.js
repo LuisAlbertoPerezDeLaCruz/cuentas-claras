@@ -37,7 +37,9 @@ const PAGINAS = [
 
 // Rutas que pide el JavaScript y por tanto no aparecen en el HTML.
 const RUTAS_DE_JS = [
-  ['web/assets/js/feriados.js', 'assets/data/feriados-extra.json']
+  ['web/assets/js/feriados.js', 'assets/data/feriados-extra.json'],
+  // register() resuelve la ruta contra document.baseURI, igual que fetch().
+  ['web/assets/js/pwa.js', 'sw.js']
 ];
 
 let fallos = 0;

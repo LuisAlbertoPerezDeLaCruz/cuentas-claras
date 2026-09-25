@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Monograma de Cuentas Claras: las dos C del logotipo de la barra, con los mismos colores
+  del sistema de diseno de base.css (fondo, texto y acento).
+
+  Las letras estan dibujadas como arcos, no como <text>: un <text> se renderiza
+  con la tipografia de quien abra el archivo, asi que el icono saldria distinto
+  en cada maquina y al convertirlo a PNG.
+
+  De aqui salen todos los PNG del manifiesto; se regeneran con:
+      ./infra/generar-iconos.sh
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Cuentas Claras">
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M 244.25 181.76 A 105 105 0 1 0 244.25 330.24" stroke="#eef2f9" stroke-width="44"/>
+    <!-- Las dos C se solapan. Este trazo del color del fondo, mas ancho y
+         debajo del azul, abre una separacion de 8 px entre ambas; sin el, la C
+         blanca queda cortada y el monograma no se lee. -->
+    <path d="M 416.25 181.76 A 105 105 0 1 0 416.25 330.24" stroke="#0f172a" stroke-width="60"/>
+    <path d="M 416.25 181.76 A 105 105 0 1 0 416.25 330.24" stroke="#4ea1ff" stroke-width="44"/>
+  </g>
+</svg>

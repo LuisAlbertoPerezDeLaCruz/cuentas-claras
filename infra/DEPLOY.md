@@ -93,11 +93,30 @@ prefijo puesto, así que conviene usarla en vez de escribirlo a mano:
 DESTINO=$(aws cloudformation describe-stacks --stack-name cuentas-claras \
   --query "Stacks[0].Outputs[?OutputKey=='DestinoSync'].OutputValue" --output text)
 
-aws s3 sync web/ "$DESTINO" --delete
+aws s3 sync web/ "$DESTINO" --delete \
+  --exclude "sw.js" --exclude "manifest.webmanifest"
+
+# Las dos piezas de la PWA necesitan cabeceras propias (ver abajo).
+aws s3 cp web/sw.js "$DESTINO/sw.js" \
+  --cache-control "no-cache" --content-type "text/javascript"
+
+aws s3 cp web/manifest.webmanifest "$DESTINO/manifest.webmanifest" \
+  --content-type "application/manifest+json"
 ```
 
 `--delete` borra lo que ya no existe en `web/`, para que no queden archivos viejos sirviéndose.
-Acotado al prefijo: no toca nada que tengas fuera de `cuentas-claras/` en el mismo bucket.
+Acotado al prefijo: no toca nada que tengas fuera de `cuentas-claras/` en el mismo bucket. Los
+`--exclude` se aplican también al destino, así que esos dos archivos no se borran: solo quedan
+fuera del `sync` para subirlos aparte.
+
+⚠️ **Por qué esos dos archivos van aparte:**
+
+- **`manifest.webmanifest`**: el `sync` adivina el tipo MIME por la extensión y `.webmanifest` no
+  la conoce, así que lo subiría como `application/octet-stream`. El navegador entonces descarta
+  el manifiesto y el sitio deja de poder instalarse, **sin ningún error en la página**.
+- **`sw.js`**: con `no-cache` el navegador siempre pregunta si hay versión nueva antes de usar la
+  que tiene. Un service worker cacheado es un sitio congelado: la única copia que puede
+  reemplazarlo es la que no se deja cachear.
 
 ## 4. Invalidar la caché
 
@@ -149,9 +168,21 @@ El dominio ya está registrado: **`lapfreelance56.online`**.
 Cada vez que cambies algo en `web/`:
 
 ```bash
-aws s3 sync web/ "$DESTINO" --delete
+aws s3 sync web/ "$DESTINO" --delete --exclude "sw.js" --exclude "manifest.webmanifest"
+aws s3 cp web/sw.js "$DESTINO/sw.js" --cache-control "no-cache" --content-type "text/javascript"
+aws s3 cp web/manifest.webmanifest "$DESTINO/manifest.webmanifest" --content-type "application/manifest+json"
 aws cloudfront create-invalidation --distribution-id $DIST --paths "/*"
 ```
+
+⚠️ **Antes de subir, sella el service worker:**
+
+```bash
+node infra/probar-pwa.js --sellar
+```
+
+`VERSION` en `sw.js` lleva un hash del contenido del sitio. Si cambias el CSS y no la subes, los
+visitantes que ya tienen la PWA instalada **siguen viendo el CSS anterior**: la página carga
+perfecta, solo que con lo de antes. `probar-pwa.js` falla si se te olvida.
 
 ## Comprobar que quedó bien
 
@@ -174,6 +205,29 @@ de al prefijo, o el `<base href>` y `RutaBase` no coinciden.
 
 En el navegador, con la consola abierta: no debe haber ni un error, y la cabecera y el pie que
 inyecta `marco.js` deben aparecer en las seis páginas con la pestaña actual marcada.
+
+### La PWA
+
+```bash
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' $URL/cuentas-claras/sw.js
+# 200 text/javascript
+
+curl -s -I $URL/cuentas-claras/sw.js | grep -i cache-control
+# cache-control: no-cache
+
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' $URL/cuentas-claras/manifest.webmanifest
+# 200 application/manifest+json
+```
+
+Y en Chrome, **DevTools > Application**:
+
+1. *Manifest*: sin advertencias, y los iconos se ven (no cuadros rotos).
+2. *Service Workers*: uno **activated and running**, con *Source* `/cuentas-claras/sw.js` y
+   *Scope* `/cuentas-claras/`. Si el scope sale `/`, el archivo se subió a la raíz del bucket.
+3. *Cache Storage*: una sola entrada `cuentas-claras-v1-…` con las 27 rutas del armazón.
+4. Marcar **Offline** en *Network* y recargar: el sitio tiene que seguir navegándose entero, y las
+   tarjetas de tasas tienen que decir **"No disponible"**. Si sin conexión muestran un número,
+   algo está cacheando las tasas y hay que arreglarlo antes que nada.
 
 ## Costo
 
@@ -199,7 +253,10 @@ Conviene igual poner una alarma de facturación en Budgets, por si algún día e
 | 403 al abrir `/cuentas-claras/conversor/` | La CloudFront Function no está asociada, o se desplegó sin `AutoPublish` |
 | 403 en todo el sitio | La política del bucket no coincide con el ARN de la distribución |
 | Una herramienta no carga las tasas | Falta el dominio de esa API en `connect-src` de la CSP |
-| Sigo viendo la versión vieja | Falta invalidar la caché (paso 4) |
+| Sigo viendo la versión vieja | Falta invalidar la caché (paso 4); si tienes la PWA instalada, además `VERSION` de `sw.js` sin sellar |
+| No aparece la opción de instalar | El manifiesto se subió sin `application/manifest+json`, o falta un icono |
+| El service worker toma todo el dominio | `sw.js` se subió a la raíz del bucket en vez de al prefijo |
+| Sin conexión se ven tasas | Algo está cacheando las tasas: correr `node infra/probar-sw.js` |
 | CloudFront rechaza el certificado | No está en `us-east-1` |
 
 ## Borrar todo

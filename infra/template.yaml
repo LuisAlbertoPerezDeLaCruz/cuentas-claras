@@ -178,6 +178,11 @@ Resources:
             # Si se anade una herramienta con otra fuente de datos y no se agrega
             # aqui, esa herramienta deja de cargar sin error visible en la pagina.
             #
+            # manifest-src y worker-src heredarian de default-src 'self', pero van
+            # escritos: son el manifiesto de la PWA y el service worker, y si
+            # algun dia default-src se cierra, la PWA dejaria de instalarse sin
+            # ningun error visible en la pagina.
+            #
             # base-uri 'self' NO se puede apretar a 'none': el sitio se sirve en
             # una subruta y cada pagina lleva un <base href="/RutaBase/">. Con
             # 'none' el navegador lo ignora y todas las rutas relativas se
@@ -188,6 +193,8 @@ Resources:
               style-src 'self' 'unsafe-inline';
               img-src 'self' data:;
               connect-src 'self' https://ve.dolarapi.com https://criptoya.com https://raw.githubusercontent.com;
+              manifest-src 'self';
+              worker-src 'self';
               base-uri 'self';
               form-action 'none';
               frame-ancestors 'none'

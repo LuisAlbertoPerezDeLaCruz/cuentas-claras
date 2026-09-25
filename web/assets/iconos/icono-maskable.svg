@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Variante "maskable": Android recorta el icono con la forma que use el lanzador
+  (circulo, gota, cuadrado redondeado) y solo garantiza el 80% central. Por eso
+  el fondo llega a los bordes sin esquinas redondeadas y el monograma va
+  encogido al 72%, dentro de esa zona segura.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Cuentas Claras">
+  <rect width="512" height="512" fill="#0f172a"/>
+  <g transform="translate(256 256) scale(0.72) translate(-256 -256)" fill="none" stroke-linecap="round">
+    <path d="M 244.25 181.76 A 105 105 0 1 0 244.25 330.24" stroke="#eef2f9" stroke-width="44"/>
+    <!-- Las dos C se solapan. Este trazo del color del fondo, mas ancho y
+         debajo del azul, abre una separacion de 8 px entre ambas; sin el, la C
+         blanca queda cortada y el monograma no se lee. -->
+    <path d="M 416.25 181.76 A 105 105 0 1 0 416.25 330.24" stroke="#0f172a" stroke-width="60"/>
+    <path d="M 416.25 181.76 A 105 105 0 1 0 416.25 330.24" stroke="#4ea1ff" stroke-width="44"/>
+  </g>
+</svg>

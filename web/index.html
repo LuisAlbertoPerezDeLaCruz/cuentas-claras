@@ -9,6 +9,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cuentas Claras — Herramientas del día a día en Venezuela</title>
   <meta name="description" content="Tasa del BCV y Binance, cálculo de IVA e IGTF, feriados bancarios, dividir la cuenta y comparar cuotas. Gratis y sin registro.">
+  <!-- PWA: manifiesto, color de la barra del navegador e iconos. Todas las rutas
+       son relativas al <base href> de arriba, como el resto del sitio. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="assets/iconos/icono.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/iconos/icono-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/iconos/icono-180.png">
   <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body>
@@ -102,6 +109,7 @@
   <script src="assets/js/formato.js"></script>
   <script src="assets/js/tasas.js"></script>
   <script src="assets/js/marco.js"></script>
+  <script src="assets/js/pwa.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       window.Tasas.iniciar();

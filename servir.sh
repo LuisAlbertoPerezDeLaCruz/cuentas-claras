@@ -9,6 +9,11 @@
 #
 # Por lo mismo, tampoco abrir web/index.html con doble clic: bajo el protocolo
 # file:// ese <base href> apunta a la raiz del disco.
+#
+# El service worker SI funciona aqui (127.0.0.1 cuenta como origen seguro), y se
+# queda registrado en el navegador para este puerto aunque pares el servidor. Si
+# ves una version vieja del sitio: DevTools > Application > Service Workers >
+# Unregister, o abrir en una ventana de incognito.
 
 set -euo pipefail
 
@@ -92,6 +97,11 @@ class Manejador(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         if self.command != 'HEAD':
             self.wfile.write(cuerpo)
+
+
+# Python no trae el tipo MIME de .webmanifest. Sin el, el navegador descarta el
+# manifiesto y el sitio deja de ser instalable, sin error visible en la pagina.
+Manejador.extensions_map['.webmanifest'] = 'application/manifest+json'
 
 
 try:

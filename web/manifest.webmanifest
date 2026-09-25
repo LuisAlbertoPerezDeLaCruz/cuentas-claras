@@ -1,0 +1,24 @@
+{
+  "name": "Cuentas Claras — herramientas del día a día",
+  "short_name": "Cuentas Claras",
+  "description": "Tasa del BCV y Binance, IVA e IGTF, feriados bancarios, dividir la cuenta y comparar cuotas.",
+  "lang": "es-VE",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "assets/iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/iconos/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/iconos/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Conversor", "short_name": "Conversor", "url": "conversor/" },
+    { "name": "IVA e IGTF", "short_name": "IVA e IGTF", "url": "iva-igtf/" },
+    { "name": "Feriados", "short_name": "Feriados", "url": "feriados/" }
+  ]
+}

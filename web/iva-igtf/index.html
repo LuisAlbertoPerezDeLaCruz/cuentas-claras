@@ -9,6 +9,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Calculadora de IVA e IGTF — Cuentas Claras</title>
   <meta name="description" content="Calcula el IVA (16%) y el IGTF (3%) de una factura en Venezuela, en bolívares o en dólares. Incluye el cálculo inverso desde el total cobrado.">
+  <!-- PWA: manifiesto, color de la barra del navegador e iconos. Todas las rutas
+       son relativas al <base href> de arriba, como el resto del sitio. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="assets/iconos/icono.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/iconos/icono-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/iconos/icono-180.png">
   <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body>
@@ -103,5 +110,6 @@
   <script src="assets/js/tasas.js"></script>
   <script src="assets/js/marco.js"></script>
   <script src="assets/js/iva-igtf.js"></script>
+  <script src="assets/js/pwa.js"></script>
 </body>
 </html>

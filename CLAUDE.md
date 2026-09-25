@@ -19,14 +19,16 @@ Restricciones que marcan todas las decisiones:
 - ✅ Seis páginas construidas y **verificadas en el navegador**, con los cálculos contrastados a
   mano y la consola limpia.
 - ✅ `infra/template.yaml` escrita y validada como YAML; la función del borde probada con
-  **17 casos** (`node infra/probar-funcion-rutas.js`).
+  **19 casos** (`node infra/probar-funcion-rutas.js`).
 - ⬜ **Pendiente: desplegar.** No se ha creado ninguna pila ni bucket todavía.
 - ✅ **Subruta resuelta (25-sep-2026).** El sitio va en
   `https://lapfreelance56.online/cuentas-claras/` y ya está construido para eso: `<base href>` en
   cada página, rutas relativas, prefijo en el bucket, la función del borde rehecha y `servir.sh`
   sirviendo bajo la misma subruta. Ver "Servir bajo una subruta".
-- ⬜ **Alcance nuevo (25-sep-2026): PWA y una API propia.** Ver "PWA y API". La subruta, que era
-  su prerrequisito, ya está resuelta.
+- ✅ **PWA hecha (25-sep-2026).** Manifiesto, iconos, service worker y dos arneses de prueba
+  nuevos. Las tasas **no** entran a la caché, y eso está comprobado ejecutando el service worker,
+  no solo leyéndolo. Ver "PWA".
+- ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
   texto propio de Luis, no inventado: **no reescribirlo**.
 - ✅ **Publicado en GitHub**: https://github.com/LuisAlbertoPerezDeLaCruz/cuentas-claras (público).
@@ -43,11 +45,16 @@ aws/
 │   ├── index.html              ← tasas del día + accesos
 │   ├── conversor/  iva-igtf/  feriados/  dividir-cuenta/  cuotas/  autor/
 │   ├── 404.html
-│   └── assets/{css/base.css, js/*.js, data/feriados-extra.json}
+│   ├── manifest.webmanifest    ← manifiesto de la PWA
+│   ├── sw.js                   ← service worker (va DENTRO de la subruta, ver "PWA")
+│   └── assets/{css/base.css, js/*.js, data/feriados-extra.json, iconos/*}
 └── infra/
     ├── template.yaml           ← CloudFormation
     ├── probar-rutas.js         ← comprueba las rutas del sitio (node, sin servidor)
     ├── probar-funcion-rutas.js ← pruebas de la función del borde (node, sin desplegar)
+    ├── probar-pwa.js           ← manifiesto, armazón y versión del service worker
+    ├── probar-sw.js            ← ejecuta el service worker en Node y dispara sus manejadores
+    ├── generar-iconos.sh       ← regenera los PNG de los iconos desde el SVG (necesita rsvg-convert)
     └── DEPLOY.md               ← guía de despliegue paso a paso
 ```
 
@@ -189,14 +196,70 @@ redirección. La función cubre todos los índices, ese incluido.
 **Pendiente de la subruta, del lado de AWS:** certificado ACM **en us-east-1** (lo exige CloudFront,
 no sirve en otra región) y registros en Route 53 — el único costo fijo real, ~$0,50/mes.
 
-## PWA y API
+## PWA
 
-Alcance pedido por Luis el 25-sep-2026.
+**Hecha el 25-sep-2026.** El sitio se instala y funciona sin conexión. Piezas:
+`web/manifest.webmanifest`, `web/sw.js`, `web/assets/js/pwa.js` (el registro) y
+`web/assets/iconos/`.
 
-**La API revierte la decisión de "sin backend"** que está documentada en "Decisiones y trampas
-encontradas": ya no es una restricción vigente. La que sí sigue en pie es *sin EC2 ni servidores que administrar* y costo de
-centavos — o sea API Gateway + Lambda, nunca una instancia. El motivo es explícito: su curso de AWS
-cubre cómo incluir APIs, y quiere aprenderlo y demostrarlo.
+### Las tasas no entran a la caché, y no es una lista de dominios
+
+Es la regla que manda sobre el resto. Una tasa vieja servida desde la caché **no se ve como un
+error**: se ve como el número de hoy, y el visitante calcula un precio equivocado sin enterarse.
+
+La garantía no depende de acordarse de excluir `ve.dolarapi.com` y compañía. `sw.js` solo llama a
+`respondWith()` para peticiones **GET, de este origen y dentro de la subruta**; a todo lo demás no
+le hace nada, y el navegador lo manda a la red como si no hubiera service worker. Agregar mañana
+una cuarta fuente de tasas no obliga a tocar nada aquí.
+
+`probar-sw.js` lo comprueba **ejecutando** el service worker, con y sin conexión. Incluye a
+propósito un caso que parece rebuscado y no lo es: `https://otro-dominio.com/cuentas-claras/…`. Es
+el único que distingue "filtra por origen" de "filtra por ruta", y sin él la prueba pasaba igual
+con el guardia de origen borrado.
+
+### Decisiones y trampas
+
+- **`sw.js` va dentro de la subruta**, no en la raíz del bucket: un service worker no puede
+  gobernar rutas por encima de aquella desde la que se sirve. Servido desde la raíz no podría
+  limitarse a `/cuentas-claras/`; servido desde ahí, su alcance es exactamente el sitio.
+- **Ni `sw.js` ni el manifiesto repiten la subruta.** `sw.js` la deduce de su propia ubicación
+  (`new URL('./', self.location.href)`), igual que `Marco.BASE` la deduce del `<base href>`. En el
+  manifiesto, `start_url` y `scope` son `"./"`, que el navegador resuelve contra la URL del
+  manifiesto. El `<base href>` sigue siendo la única línea que sabe cuál es la subruta.
+- **El manifiesto NO lleva `id`.** A diferencia del resto de sus campos, `id` se resuelve contra el
+  **origen**, no contra la URL del manifiesto: un `"./"` ahí apuntaría a la raíz del dominio. Sin
+  `id`, vale `start_url`, que ya es correcto. `probar-pwa.js` falla si alguien lo agrega.
+- **Las páginas se guardan con barra final** (`'conversor/'`), que es la URL que pide el navegador
+  al navegar, no `'conversor/index.html'`, que es la clave del bucket.
+- **Páginas: primero la red. Recursos: primero la caché.** Así un despliegue se ve en la visita
+  siguiente en vez de dos visitas después, y el CSS y el JavaScript siguen siendo instantáneos.
+- **`VERSION` de `sw.js` lleva un hash del contenido del armazón.** Sin eso, cambiar el CSS y
+  desplegar deja a quien tenga la PWA instalada con el CSS anterior: la página carga perfecta y
+  muestra lo de antes. `node infra/probar-pwa.js` falla si el hash no corresponde, y
+  `--sellar` lo actualiza. **Hay que sellarlo antes de cada despliegue.**
+- **`skipWaiting()` + `clients.claim()`** se usan a pesar de la advertencia habitual, porque aquí
+  no hay piezas que se pidan después: cada página carga todo su JavaScript de una vez y con
+  nombres fijos, así que no puede quedar una mezcla de versión vieja y nueva.
+- **Los iconos son arcos, no `<text>`.** Un `<text>` se renderiza con la tipografía de cada
+  máquina, así que el icono saldría distinto en cada conversión a PNG. Los PNG están comiteados:
+  no hay paso de compilación y el despliegue es un `aws s3 sync` de `web/`.
+- **El manifiesto necesita su tipo MIME.** `.webmanifest` no lo conoce ni Python ni el
+  `aws s3 sync`; servido como `application/octet-stream` el navegador lo descarta y el sitio deja
+  de poder instalarse, **sin error visible**. Por eso `servir.sh` lo registra a mano y `DEPLOY.md`
+  lo sube con `aws s3 cp --content-type`.
+- **`sw.js` se sube con `Cache-Control: no-cache`.** Un service worker cacheado es un sitio
+  congelado: la única copia que puede reemplazarlo es la que no se deja cachear.
+- **CSP**: se agregaron `manifest-src 'self'` y `worker-src 'self'`. Heredarían de
+  `default-src 'self'`, pero van escritos para que cerrar `default-src` algún día no rompa la PWA
+  en silencio.
+
+## API (pendiente)
+
+Alcance pedido por Luis el 25-sep-2026. **Revierte la decisión de "sin backend"** que está
+documentada en "Decisiones y trampas encontradas": ya no es una restricción vigente. La que sí
+sigue en pie es *sin EC2 ni servidores que administrar* y costo de centavos — o sea API Gateway +
+Lambda, nunca una instancia. El motivo es explícito: su curso de AWS cubre cómo incluir APIs, y
+quiere aprenderlo y demostrarlo.
 
 Mejor primer candidato: **una Lambda que lea `bcv.org.ve` del lado servidor**. Resuelve el problema
 de CORS documentado en "Fuentes de datos" — hoy no se consulta el BCV de primera mano justamente
@@ -206,15 +269,13 @@ bastante más grande.
 
 Trampas a revisar al planificar:
 
-- **PWA + tasas**: un service worker con estrategia *cache-first* serviría tasas viejas como si
-  fueran del día. Es el peor fallo posible en esta aplicación. **Las tasas nunca van a caché de
-  service worker.**
-- **PWA + subruta**: ya resuelta. El `scope` del service worker y el `start_url` del manifiesto son
-  `/cuentas-claras/`; en JavaScript está en `Marco.BASE`, leído del `<base href>`. Ojo con el
-  registro: un service worker no puede tener un `scope` por encima de la ruta desde la que se
-  sirve, así que el archivo va **dentro** de la subruta, no en la raíz del bucket.
 - **API + CSP**: hay que **agregar el dominio de la API a `connect-src`** en la plantilla, o dejará
   de cargar sin error visible en la página.
+- **API + service worker**: si la API se sirve desde otro dominio, el service worker ni la ve, que
+  es lo correcto. Pero si algún día se pone **detrás del mismo dominio** (por ejemplo
+  `/api/` en la misma distribución de CloudFront), pasaría a ser del mismo origen. Seguiría fuera
+  de la subruta `/cuentas-claras/`, así que `sw.js` tampoco la interceptaría — pero conviene
+  agregar el caso a `probar-sw.js` antes de moverla, no después.
 
 ## Arquitectura AWS (por desplegar)
 
@@ -224,7 +285,11 @@ de resolver los documentos índice de subcarpeta y todo devolvería 403.
 
 La CSP de la plantilla lista en `connect-src` exactamente `ve.dolarapi.com`, `criptoya.com` y
 `raw.githubusercontent.com`. **Si se añade una herramienta con otra fuente de datos hay que
-agregarla ahí**, o dejará de cargar sin error visible en la página.
+agregarla ahí**, o dejará de cargar sin error visible en la página. También lleva
+`manifest-src 'self'` y `worker-src 'self'`, que son el manifiesto y el service worker de la PWA.
+
+El despliegue **no es un `aws s3 sync` a secas**: `sw.js` y `manifest.webmanifest` se suben aparte,
+con su tipo MIME y su `Cache-Control`. Ver el paso 3 de `DEPLOY.md`.
 
 Costo: CloudFront (1 TB y 10 M peticiones), CloudFront Functions (2 M) y ACM son *always free* y no
 expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propio.
@@ -234,12 +299,22 @@ expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propi
 ```bash
 ./servir.sh                          # http://127.0.0.1:8765/cuentas-claras/
 node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta y existen
-node infra/probar-funcion-rutas.js   # los 17 casos de la función del borde
+node infra/probar-funcion-rutas.js   # los 19 casos de la función del borde
+node infra/probar-pwa.js             # manifiesto, armazón y versión del service worker
+node infra/probar-sw.js              # ejecuta el service worker y dispara sus manejadores
 ```
 
-Las dos pruebas corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad
-saboteando a propósito: una barra inicial suelta, un `<base href>` que se separa de `RutaBase`, un
-`<base>` colocado después de la primera ruta, y la función del borde vuelta agnóstica de la subruta.
+Las cuatro corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
+propósito: una barra inicial suelta, un `<base href>` que se separa de `RutaBase`, un `<base>`
+colocado después de la primera ruta, la función del borde vuelta agnóstica de la subruta, un
+`start_url` absoluto, un icono que miente sobre su tamaño, un archivo nuevo en `web/` que no entró
+al armazón, una página sin registrar el service worker, el CSS cambiado sin sellar `VERSION`, y el
+guardia de origen del service worker borrado.
+
+⚠️ Ese último sabotaje **no fallaba** en la primera versión de `probar-sw.js`, porque ninguna URL
+de tasas tiene una ruta que empiece por `/cuentas-claras/`: el filtro por ruta la tapaba. Hubo que
+agregar el caso `https://otro-dominio.com/cuentas-claras/tasas.json`. Vale la pena recordarlo: una
+prueba que pasa no dice nada hasta que se comprueba que puede fallar.
 `probar-rutas.js` además lee `RutaBase` **de la plantilla** y lo contrasta con los ocho `<base
 href>`, que es el desajuste que desplegaría el sitio roto sin que nada se queje antes.
 
@@ -290,9 +365,13 @@ quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es
 1. **Desplegar**: seguir `infra/DEPLOY.md`, más ACM en us-east-1 y Route 53 para
    `lapfreelance56.online`. Es el siguiente paso real; ya no hay nada que lo bloquee.
    Al terminar, correr las comprobaciones de "Comprobar que quedó bien" de `DEPLOY.md`: el fallo
-   de la subruta no da error, solo un sitio sin estilos.
-2. **PWA** (manifiesto + service worker, sin cachear tasas).
-3. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor.
+   de la subruta no da error, solo un sitio sin estilos, y el de la PWA tampoco.
+2. **Mirar la PWA en Chrome.** La lógica está probada en Node, pero falta verla en
+   DevTools > Application: que el manifiesto no dé advertencias, que el *scope* del service worker
+   sea `/cuentas-claras/` y que en modo *Offline* las tarjetas de tasas digan "No disponible".
+   Queda pendiente porque la extensión de Chrome no estaba conectada el 25-sep-2026.
+3. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor. Ver "API
+   (pendiente)".
 4. El nombre "Cuentas Claras" quedó de hecho fijado por la subruta y la URL del repositorio.
    Cambiarlo ya no es gratis: habría que tocar el código, el enlace de `/autor/`, la URL pública y
    el repositorio.
