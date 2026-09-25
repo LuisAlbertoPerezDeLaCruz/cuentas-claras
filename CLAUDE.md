@@ -148,6 +148,12 @@ expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propi
 parece rota. Ya pasó una vez. Las rutas absolutas son las correctas para el destino real, donde el
 sitio vive en la raíz del dominio.
 
+Si la extensión de Chrome no está disponible, la lógica se puede probar en Node con un DOM
+simulado: basta con un `getElementById` que devuelva objetos con `value`, `textContent`,
+`addEventListener` y `setSelectionRange`, cargar los módulos con `eval` y disparar los manejadores
+a mano. Así se verificaron el conversor, IVA/IGTF, dividir y cuotas. **No cubre** lo que depende
+del DOM real: el renderizado y los campos dinámicos del modo "por consumo" de dividir la cuenta.
+
 Casos verificados a mano que deben seguir dando lo mismo:
 
 | Herramienta | Entrada | Resultado |
