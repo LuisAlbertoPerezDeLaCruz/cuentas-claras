@@ -21,7 +21,7 @@ Restricciones que marcan todas las decisiones:
 - ✅ `infra/template.yaml` escrita y validada como YAML; la función de reescritura de rutas
   probada con cinco casos.
 - ⬜ **Pendiente: desplegar.** No se ha creado ninguna pila ni bucket todavía.
-- ⬜ **Pendiente en la página de autor**: los enlaces `[TU EMAIL O LINKEDIN]` y `[TU GITHUB]`.
+- ⬜ **Pendiente en la página de autor**: el enlace `[TU GITHUB]`. El correo ya está puesto.
   El nombre y la bio ya están puestos (texto propio de Luis, no inventado: no reescribirlo).
 - ⬜ El nombre "Cuentas Claras" es una propuesta. Alternativas barajadas: *Cuadre*, *Al Día VE*.
   Cambiarlo es barato: vive en `web/assets/js/marco.js` (constantes `NOMBRE` y `NOMBRE_ACENTO`)
