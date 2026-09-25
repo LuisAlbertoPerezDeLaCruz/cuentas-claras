@@ -1,5 +1,9 @@
 /*
- * Conversor USD -> Bs. La consulta de tasas vive en tasas.js; aquí solo el cálculo.
+ * Conversor entre dólares y bolívares, en los dos sentidos.
+ * La consulta de tasas vive en tasas.js; aquí solo el cálculo.
+ *
+ * Directo:  bolívares = monto × tasa
+ * Inverso:  dólares   = monto ÷ tasa
  */
 
 'use strict';
@@ -7,22 +11,60 @@
 (function () {
   var F = window.Formato;
 
+  var modoInverso = false;
+
+  /* Cada sentido recuerda su propio monto: si escribiste 100 dólares, te cambias
+     a bolívares y vuelves, los 100 siguen ahí. Vacío la primera vez. */
+  var montos = { directo: '', inverso: '' };
+
+  function claveModo() {
+    return modoInverso ? 'inverso' : 'directo';
+  }
+
+  // Cada resultado con su tasa y el texto de la fórmula en cada sentido.
+  var RESULTADOS = [
+    { id: 'bcv', formula: 'dólar BCV' },
+    { id: 'binance', formula: 'dólar Binance' },
+    { id: 'promedio', formula: '(dólar BCV + euro BCV) / 2' },
+    { id: 'euro', formula: 'euro BCV' }
+  ];
+
   function $(id) {
     return document.getElementById(id);
   }
 
+  // Devuelve la tasa de cada tarjeta, o null si esa fuente no respondió.
+  function tasaDe(id) {
+    var t = window.Tasas.valores;
+    if (id === 'promedio') {
+      return (t.bcv === null || t.euro === null) ? null : (t.bcv + t.euro) / 2;
+    }
+    return t[id];
+  }
+
   function pintarResultado(id, valor) {
-    $(id).textContent = valor === null ? 'No disponible' : F.bs(valor);
+    var destino = $('res-' + id);
+    if (valor === null) {
+      destino.textContent = 'No disponible';
+      return;
+    }
+    destino.textContent = modoInverso ? F.usd(valor) : F.bs(valor);
   }
 
   function limpiarResultados(texto) {
-    ['res-bcv', 'res-binance', 'res-promedio', 'res-euro'].forEach(function (id) {
-      $(id).textContent = texto;
+    RESULTADOS.forEach(function (r) {
+      $('res-' + r.id).textContent = texto;
+    });
+  }
+
+  function pintarFormulas() {
+    var signo = modoInverso ? ' ÷ ' : ' × ';
+    RESULTADOS.forEach(function (r) {
+      $('f-' + r.id).textContent = 'monto' + signo + r.formula;
     });
   }
 
   function calcular() {
-    var tasas = window.Tasas.valores;
     var cajaError = $('error-monto');
     var crudo = $('monto').value.trim();
 
@@ -34,7 +76,9 @@
 
     var monto = F.aNumeroPositivo(crudo);
     if (monto === null) {
-      cajaError.textContent = 'Ingresa un monto en dólares mayor que cero.';
+      cajaError.textContent = modoInverso
+        ? 'Ingresa un monto en bolívares mayor que cero.'
+        : 'Ingresa un monto en dólares mayor que cero.';
       cajaError.hidden = false;
       limpiarResultados('—');
       return;
@@ -42,30 +86,54 @@
 
     cajaError.hidden = true;
 
-    // 1) Tasa BCV
-    pintarResultado('res-bcv', tasas.bcv === null ? null : monto * tasas.bcv);
+    RESULTADOS.forEach(function (r) {
+      var tasa = tasaDe(r.id);
+      if (tasa === null) {
+        pintarResultado(r.id, null);
+        return;
+      }
+      pintarResultado(r.id, modoInverso ? monto / tasa : monto * tasa);
+    });
+  }
 
-    // 2) Tasa Binance
-    pintarResultado('res-binance', tasas.binance === null ? null : monto * tasas.binance);
+  function cambiarModo(inverso) {
+    if (inverso === modoInverso) return;
 
-    // 3) Promedio entre el dólar BCV y el euro BCV
-    var promedio = (tasas.bcv === null || tasas.euro === null)
-      ? null
-      : monto * ((tasas.bcv + tasas.euro) / 2);
-    pintarResultado('res-promedio', promedio);
+    // Se guarda lo que había en el sentido que se abandona y se recupera lo del
+    // sentido al que se entra.
+    montos[claveModo()] = $('monto').value;
+    modoInverso = inverso;
+    $('monto').value = montos[claveModo()];
 
-    // 4) El monto en dólares valorado a la tasa del euro BCV.
-    //    En Venezuela a veces se exige cobrar el dólar a tasa euro.
-    pintarResultado('res-euro', tasas.euro === null ? null : monto * tasas.euro);
+    $('modo-directo').setAttribute('aria-pressed', String(!inverso));
+    $('modo-inverso').setAttribute('aria-pressed', String(inverso));
+
+    $('etiqueta-monto').textContent = inverso
+      ? 'Monto en bolívares (Bs)'
+      : 'Monto en dólares (USD)';
+    $('simbolo').textContent = inverso ? 'Bs' : '$';
+    $('monto').placeholder = inverso ? '10000' : '100';
+
+    pintarFormulas();
+    calcular();
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    // No hay botón de calcular: el resultado se actualiza al escribir. Esto solo
+    // evita que pulsar Enter recargue la página.
     $('formulario').addEventListener('submit', function (evento) {
       evento.preventDefault();
+    });
+
+    $('monto').addEventListener('input', function () {
+      montos[claveModo()] = $('monto').value;
       calcular();
     });
 
-    $('monto').addEventListener('input', calcular);
+    $('modo-directo').addEventListener('click', function () { cambiarModo(false); });
+    $('modo-inverso').addEventListener('click', function () { cambiarModo(true); });
+
+    pintarFormulas();
 
     // Recalcula cada vez que llegan tasas nuevas (carga inicial y botón actualizar).
     window.Tasas.iniciar(calcular);

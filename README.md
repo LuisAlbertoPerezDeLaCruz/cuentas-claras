@@ -11,7 +11,7 @@ través de CloudFront.
 
 | Ruta | Qué hace |
 |---|---|
-| `/conversor/` | USD → Bs por tasa BCV, Binance, promedio BCV-euro y tasa euro |
+| `/conversor/` | USD ⇄ Bs (los dos sentidos) por tasa BCV, Binance, promedio BCV-euro y tasa euro |
 | `/iva-igtf/` | IVA 16 % e IGTF 3 %, en modo directo e inverso, en Bs y USD |
 | `/feriados/` | Próximo feriado, lista anual y días hábiles entre dos fechas |
 | `/dividir-cuenta/` | Reparto con propina, en partes iguales o por consumo |
@@ -44,9 +44,13 @@ infra/    plantilla de CloudFormation y guía de despliegue
 ## Probar localmente
 
 ```bash
-python3 -m http.server 8765 --directory web
-# http://127.0.0.1:8765/
+./servir.sh
+# abre http://127.0.0.1:8765/
 ```
+
+No abras `web/index.html` con doble clic: las rutas son absolutas (`/assets/...`) porque el sitio
+vive en la raíz del dominio, y bajo `file://` esa barra apunta a la raíz del disco, así que no
+cargan ni el CSS ni el JavaScript.
 
 ## Desplegar
 

@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conversor de dólares a bolívares — Cuentas Claras</title>
-  <meta name="description" content="Convierte dólares a bolívares con la tasa del BCV, la de Binance, la del euro y el promedio BCV. Tasas consultadas en vivo.">
+  <title>Conversor de dólares y bolívares — Cuentas Claras</title>
+  <meta name="description" content="Convierte dólares a bolívares y bolívares a dólares con la tasa del BCV, la de Binance, la del euro y el promedio BCV. Tasas consultadas en vivo.">
   <link rel="stylesheet" href="/assets/css/base.css">
 </head>
 <body>
   <div class="encabezado">
-    <h1>Conversor de dólares a bolívares</h1>
+    <h1>Conversor de dólares y bolívares</h1>
     <p class="subtitulo">Tasas del BCV y de Binance, consultadas en vivo.</p>
   </div>
 
@@ -61,11 +61,16 @@
     <section class="bloque" aria-labelledby="titulo-calculadora">
       <h2 id="titulo-calculadora">Calcular</h2>
 
+      <div class="segmentado" role="group" aria-label="Sentido de la conversión">
+        <button type="button" id="modo-directo" aria-pressed="true">Dólares → bolívares</button>
+        <button type="button" id="modo-inverso" aria-pressed="false">Bolívares → dólares</button>
+      </div>
+
       <form class="formulario" id="formulario" novalidate>
         <label class="campo">
-          <span class="campo-etiqueta">Monto en dólares (USD)</span>
+          <span class="campo-etiqueta" id="etiqueta-monto">Monto en dólares (USD)</span>
           <div class="campo-control">
-            <span class="prefijo">$</span>
+            <span class="prefijo" id="simbolo">$</span>
             <input
               type="number"
               id="monto"
@@ -77,7 +82,6 @@
               autocomplete="off">
           </div>
         </label>
-        <button type="submit" class="boton">Calcular</button>
       </form>
 
       <p class="error" id="error-monto" role="alert" hidden></p>
@@ -86,25 +90,25 @@
         <article class="tarjeta tarjeta-resultado">
           <h3 class="tarjeta-titulo">1. Tasa BCV</h3>
           <p class="tarjeta-valor" id="res-bcv">—</p>
-          <p class="tarjeta-meta"><span class="formula">monto &times; dólar BCV</span></p>
+          <p class="tarjeta-meta"><span class="formula" id="f-bcv"></span></p>
         </article>
 
         <article class="tarjeta tarjeta-resultado">
           <h3 class="tarjeta-titulo">2. Tasa Binance</h3>
           <p class="tarjeta-valor" id="res-binance">—</p>
-          <p class="tarjeta-meta"><span class="formula">monto &times; dólar Binance</span></p>
+          <p class="tarjeta-meta"><span class="formula" id="f-binance"></span></p>
         </article>
 
         <article class="tarjeta tarjeta-resultado">
           <h3 class="tarjeta-titulo">3. Promedio BCV</h3>
           <p class="tarjeta-valor" id="res-promedio">—</p>
-          <p class="tarjeta-meta"><span class="formula">monto &times; (dólar BCV + euro BCV) / 2</span></p>
+          <p class="tarjeta-meta"><span class="formula" id="f-promedio"></span></p>
         </article>
 
         <article class="tarjeta tarjeta-resultado">
           <h3 class="tarjeta-titulo">4. Tasa euro BCV</h3>
           <p class="tarjeta-valor" id="res-euro">—</p>
-          <p class="tarjeta-meta"><span class="formula">monto &times; euro BCV</span></p>
+          <p class="tarjeta-meta"><span class="formula" id="f-euro"></span></p>
         </article>
       </div>
     </section>

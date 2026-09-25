@@ -54,7 +54,7 @@ del dominio.
 
 | Ruta | Qué hace |
 |---|---|
-| `/conversor/` | USD → Bs por tasa BCV, Binance, promedio BCV-euro y tasa euro |
+| `/conversor/` | USD ⇄ Bs (los dos sentidos) por tasa BCV, Binance, promedio BCV-euro y tasa euro |
 | `/iva-igtf/` | IVA 16 % e IGTF 3 %, en modo directo e inverso, en Bs y USD |
 | `/feriados/` | Próximo feriado, lista anual y días hábiles entre dos fechas |
 | `/dividir-cuenta/` | Reparto con propina, en partes iguales o por consumo |
@@ -127,9 +127,13 @@ expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propi
 ## Probar localmente
 
 ```bash
-python3 -m http.server 8765 --directory web
-# http://127.0.0.1:8765/
+./servir.sh          # http://127.0.0.1:8765/
 ```
+
+⚠️ **No abrir `web/index.html` con doble clic.** Las rutas son absolutas (`/assets/...`) y bajo
+`file://` la barra inicial apunta a la raíz del disco: la página carga sin estilos ni JavaScript y
+parece rota. Ya pasó una vez. Las rutas absolutas son las correctas para el destino real, donde el
+sitio vive en la raíz del dominio.
 
 Casos verificados a mano que deben seguir dando lo mismo:
 
@@ -142,6 +146,7 @@ Casos verificados a mano que deben seguir dando lo mismo:
 | Cuotas | contado 100, 6 × 20 | sobrecosto 20 (20 %), **5,47 % mensual** = 89,51 % anual |
 | Préstamo | 1.000, 60 % anual, 12 meses | cuota **112,83**, total 1.353,90, intereses 353,90 |
 | Días hábiles | 24/09/2026 → 24/10/2026 | 31 totales, 9 finde, 1 feriado, **21 hábiles** |
+| Conversor inverso | 100.000 Bs con BCV 855,6625 | **$116,87** (ida y vuelta devuelve el monto original) |
 
 ## Próximos pasos
 
