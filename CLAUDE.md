@@ -265,6 +265,13 @@ Trampas, todas cubiertas por `probar-instalar.js`:
 - **iOS no dispara `beforeinstallprompt`** y no hay forma de provocarlo: en iPhone sigue siendo
   *Compartir → Añadir a pantalla de inicio*. La banda simplemente no aparece; no se inventa un
   mensaje falso.
+- ⚠️ **La banda NO usa `--fondo-suave` ni `--borde`**, que son los tokens de `.tarjeta`. Con ellos
+  salía exactamente del mismo color que las tarjetas y se leía como una tarjeta más puesta encima,
+  no como un aviso — pasaba desapercibida. Tiene los suyos (`--fondo-encima`, `--borde-encima`),
+  más claros. **En tema oscuro lo que separa una capa de la de abajo es la luminosidad, no la
+  sombra**: una sombra negra sobre un fondo casi negro no se ve. Lo demás que la hace destacar es
+  el halo de acento y, sobre todo, la **animación de entrada**: algo que aparece quieto en una
+  página ya dibujada no se nota.
 - ⚠️ **En la primerísima visita a un origen la banda NO sale, y no es un fallo.** Chrome solo
   considera instalable un sitio cuyo service worker ya **controla** la página, y en la primera
   carga el service worker apenas se está registrando. Aparece desde la segunda carga. Se vio al
