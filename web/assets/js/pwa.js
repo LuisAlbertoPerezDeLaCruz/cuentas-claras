@@ -44,7 +44,8 @@
   var DESCANSO_MS = 30 * 24 * 60 * 60 * 1000;
 
   var invitacion = null;  // el evento que guarda el navegador, o null
-  var banda = null;       // el elemento en pantalla, o null
+  var banda = null;       // la banda en pantalla, o null
+  var enlacePie = null;   // el enlace del pie, o null
 
   function descartadaHacePoco() {
     try {
@@ -66,6 +67,11 @@
     banda = null;
   }
 
+  function quitarEnlacePie() {
+    if (enlacePie && enlacePie.parentNode) enlacePie.parentNode.removeChild(enlacePie);
+    enlacePie = null;
+  }
+
   function pedirInstalacion() {
     // Un doble toque encola dos clics antes de que la banda salga del documento.
     // Sin esta guarda el segundo revienta contra un evento que ya se consumio.
@@ -77,6 +83,7 @@
     // toque no intente usarlo dos veces.
     invitacion = null;
     quitarBanda();
+    quitarEnlacePie();
     guardada.prompt();
   }
 
@@ -108,6 +115,42 @@
     document.body.appendChild(banda);
   }
 
+  /* Una salida para quien dijo "ahora no" y se arrepiente antes de los 30 dias,
+     y para quien cerro la banda sin leerla.
+
+     ⚠️ Solo se pone cuando hay una invitacion guardada. Un "Instalar la app" fijo
+     en el pie seria un enlace muerto en todos los casos en que el navegador no
+     ofrece instalacion: ya instalada, iOS, o un navegador sin soporte. Pulsarlo
+     no haria nada y no habria forma de que el visitante entendiera por que. */
+  function ponerEnlacePie() {
+    if (enlacePie || !invitacion) return;
+
+    // Lo monta marco.js en DOMContentLoaded; si todavia no esta, no hay donde.
+    var creditos = document.querySelector('.pie-creditos');
+    if (!creditos) return;
+
+    var boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'pie-instalar';
+    boton.textContent = 'Instalar la app';
+    boton.addEventListener('click', pedirInstalacion);
+
+    // El separador va dentro del mismo tramo que el boton para que quitarlo se
+    // lleve los dos y no quede un " · " suelto colgando del pie.
+    enlacePie = document.createElement('span');
+    enlacePie.appendChild(document.createTextNode(' · '));
+    enlacePie.appendChild(boton);
+    creditos.appendChild(enlacePie);
+  }
+
+  // Lo que se ofrece cuando el navegador dice que el sitio es instalable. La
+  // banda respeta el "ahora no"; el enlace del pie no, porque es justo el modo
+  // de deshacerlo.
+  function ofrecer() {
+    if (!descartadaHacePoco()) mostrarBanda();
+    ponerEnlacePie();
+  }
+
   // ⚠ Este listener se registra al cargar el script, NO dentro de 'load'. El
   // navegador dispara beforeinstallprompt muy pronto, a veces antes de que el
   // documento este listo, y el evento no se repite: registrarlo tarde es no
@@ -118,9 +161,12 @@
     evento.preventDefault();
     invitacion = evento;
 
-    if (descartadaHacePoco()) return;
-    if (document.body) mostrarBanda();
-    else document.addEventListener('DOMContentLoaded', mostrarBanda);
+    // Se espera al documento por el enlace del pie: marco.js monta el pie en
+    // DOMContentLoaded, asi que antes de eso no hay donde colgarlo. marco.js va
+    // antes que este archivo en las ocho paginas, o sea que su manejador corre
+    // primero y cuando llega este el pie ya existe.
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ofrecer);
+    else ofrecer();
   });
 
   // Si instala desde el menu del navegador mientras la banda esta en pantalla,
@@ -128,5 +174,6 @@
   window.addEventListener('appinstalled', function () {
     invitacion = null;
     quitarBanda();
+    quitarEnlacePie();
   });
 })();

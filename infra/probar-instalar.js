@@ -41,7 +41,10 @@ function crearElemento(etiqueta) {
     parentNode: null,
     html: '',
     botones: {},
+    clics: [],
     setAttribute: function (nombre, valor) { this.atributos[nombre] = valor; },
+    addEventListener: function (tipo, fn) { if (tipo === 'click') this.clics.push(fn); },
+    pulsar: function () { this.clics.forEach((fn) => fn()); },
 
     // Al asignar innerHTML se crean los botones que pwa.js buscara despues. No
     // es un parser de HTML: solo lo justo para poder pulsarlos.
@@ -65,8 +68,13 @@ function crearElemento(etiqueta) {
       return (m && this.botones[m[1]]) || null;
     },
 
-    appendChild: function (hijo) { hijo.parentNode = this; return hijo; },
-    removeChild: function (hijo) { hijo.parentNode = null; return hijo; }
+    hijos: [],
+    appendChild: function (hijo) { hijo.parentNode = this; this.hijos.push(hijo); return hijo; },
+    removeChild: function (hijo) {
+      this.hijos = this.hijos.filter((h) => h !== hijo);
+      hijo.parentNode = null;
+      return hijo;
+    }
   };
 }
 
@@ -79,6 +87,16 @@ function crearEntorno(opciones) {
   const guardado = new Map();
   if (o.guardado !== undefined) guardado.set('instalarDescartadoEl', String(o.guardado));
 
+  // El pie que monta marco.js. pwa.js cuelga de aqui el enlace de instalar.
+  const creditos = crearElemento('p');
+  creditos.hijos = [];
+  creditos.appendChild = function (hijo) { hijo.parentNode = this; this.hijos.push(hijo); return hijo; };
+  creditos.removeChild = function (hijo) {
+    this.hijos = this.hijos.filter((h) => h !== hijo);
+    hijo.parentNode = null;
+    return hijo;
+  };
+
   const cuerpo = crearElemento('body');
   cuerpo.hijos = [];
   cuerpo.appendChild = function (hijo) { hijo.parentNode = this; this.hijos.push(hijo); return hijo; };
@@ -89,8 +107,16 @@ function crearEntorno(opciones) {
   };
 
   const documento = {
+    // 'loading' = el pie todavia no esta montado, igual que antes de
+    // DOMContentLoaded en el navegador.
+    readyState: o.cuerpoListo === false ? 'loading' : 'complete',
     body: o.cuerpoListo === false ? null : cuerpo,
     createElement: crearElemento,
+    createTextNode: function (texto) { return { texto: texto, parentNode: null }; },
+    querySelector: function (selector) {
+      if (selector === '.pie-creditos') return o.sinPie ? null : creditos;
+      return null;
+    },
     addEventListener: function (tipo, fn) {
       (manejadoresDoc[tipo] = manejadoresDoc[tipo] || []).push(fn);
     }
@@ -129,6 +155,17 @@ function crearEntorno(opciones) {
     guardado: guardado,
 
     banda: function () { return cuerpo.hijos.find((h) => h.className === 'instalar') || null; },
+
+    // El enlace del pie va envuelto en un <span> junto a su separador.
+    enlacePie: function () {
+      const tramo = creditos.hijos.find((h) => h.etiqueta === 'span');
+      if (!tramo) return null;
+      return tramo.hijos.find((h) => h.className === 'pie-instalar') || null;
+    },
+
+    separadorSuelto: function () {
+      return creditos.hijos.some((h) => h.texto === ' · ');
+    },
 
     disparar: function (tipo, evento) {
       const lista = manejadoresWindow[tipo] || [];
@@ -229,11 +266,12 @@ console.log('\n--- la banda de instalacion ---');
   // El evento puede llegar antes de que exista el <body>.
   const e = crearEntorno({ cuerpoListo: false });
   e.disparar('beforeinstallprompt', e.invitacion());
-  if (e.banda()) fallar('se inyecto en un body que todavia no existia');
+  if (e.banda()) fallar('se inyecto en un documento que todavia se estaba cargando');
   e.documento.body = e.cuerpo;
+  e.documento.readyState = 'complete';
   e.dispararEnDocumento('DOMContentLoaded');
-  if (!e.banda()) fallar('el evento llego sin <body> y la banda nunca se inyecto');
-  else ok('si el evento llega sin <body>, espera a DOMContentLoaded');
+  if (!e.banda()) fallar('el evento llego con el documento cargando y la banda nunca se inyecto');
+  else ok('si el evento llega antes de tiempo, espera a DOMContentLoaded');
 }
 
 console.log('\n--- los botones ---');
@@ -318,6 +356,70 @@ console.log('\n--- la memoria del "ahora no" ---');
   }
 }
 
+console.log('\n--- el enlace del pie ---');
+{
+  const e = crearEntorno();
+  const inv = e.invitacion();
+  e.disparar('beforeinstallprompt', inv);
+  const enlace = e.enlacePie();
+  if (!enlace) fallar('no se agrego el enlace al pie');
+  else if (enlace.etiqueta !== 'button') fallar('el enlace del pie es un <' + enlace.etiqueta + '>; hace algo, no navega');
+  else ok('aparece en el pie cuando se puede instalar');
+
+  if (enlace) {
+    enlace.pulsar();
+    if (inv.prompts !== 1) fallar('el enlace del pie no abrio el dialogo');
+    else ok('el enlace del pie abre el dialogo nativo');
+    if (e.enlacePie()) fallar('el enlace sigue en el pie despues de instalar');
+    else if (e.separadorSuelto()) fallar('quedo un " · " suelto en el pie');
+    else ok('al usarlo se va, y se lleva su separador');
+  }
+}
+
+{
+  // El motivo de existir del enlace: deshacer un "ahora no".
+  const e = crearEntorno();
+  const inv = e.invitacion();
+  e.disparar('beforeinstallprompt', inv);
+  e.banda().querySelector('[data-accion="no"]').pulsar();
+  if (!e.enlacePie()) fallar('"Ahora no" se llevo tambien el enlace del pie: no hay vuelta atras');
+  else ok('"Ahora no" cierra la banda pero deja el enlace del pie');
+  e.enlacePie().pulsar();
+  if (inv.prompts !== 1) fallar('el enlace del pie no funciona tras un "ahora no"');
+  else ok('el enlace del pie sirve para deshacer el "ahora no"');
+}
+
+{
+  // Visita siguiente dentro de los 30 dias: sin banda, pero con salida.
+  const e = crearEntorno({ guardado: Date.now() - 10 * 24 * 60 * 60 * 1000 });
+  e.disparar('beforeinstallprompt', e.invitacion());
+  if (e.banda()) fallar('descartada hace 10 dias y vuelve a insistir con la banda');
+  else if (!e.enlacePie()) fallar('descartada hace 10 dias y tampoco queda el enlace del pie');
+  else ok('descartada hace poco: sin banda, pero con el enlace del pie');
+}
+
+{
+  // Sin beforeinstallprompt (iOS, ya instalada, navegador sin soporte) el
+  // enlace no puede aparecer: seria un enlace muerto.
+  const e = crearEntorno();
+  e.disparar('load');
+  if (e.enlacePie()) fallar('hay "Instalar la app" en el pie sin que se pueda instalar');
+  else ok('sin beforeinstallprompt no hay enlace en el pie');
+}
+
+{
+  // Una pagina sin pie montado no puede reventar.
+  let e;
+  try {
+    e = crearEntorno({ sinPie: true });
+    e.disparar('beforeinstallprompt', e.invitacion());
+    if (!e.banda()) fallar('sin pie tampoco aparecio la banda');
+    else ok('sin pie en la pagina, la banda sigue apareciendo');
+  } catch (error) {
+    fallar('sin .pie-creditos lanzo: ' + error.message);
+  }
+}
+
 console.log('\n--- instalada desde el menu del navegador ---');
 {
   const e = crearEntorno();
@@ -325,6 +427,8 @@ console.log('\n--- instalada desde el menu del navegador ---');
   if (!e.disparar('appinstalled')) fallar('nadie escucha appinstalled');
   if (e.banda()) fallar('la banda sigue ofreciendo instalar una app ya instalada');
   else ok('appinstalled quita la banda');
+  if (e.enlacePie()) fallar('el pie sigue ofreciendo instalar una app ya instalada');
+  else ok('appinstalled quita el enlace del pie');
 }
 
 console.log('\n--- sin marco.js ---');

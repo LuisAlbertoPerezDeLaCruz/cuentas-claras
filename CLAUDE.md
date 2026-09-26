@@ -36,7 +36,7 @@ Restricciones que marcan todas las decisiones:
   apagando `servir.sh` y recargando: la página carga entera desde la caché y **la tasa de Binance
   cambió en esa misma recarga**, o sea que el armazón se cachea y las tasas no.
 - ✅ **Invitación a instalar (26-sep-2026).** Banda propia + diálogo nativo, con
-  `infra/probar-instalar.js` (20 comprobaciones). **Desplegada el 26-sep-2026** y comprobada en
+  `infra/probar-instalar.js` (30 comprobaciones), más un "Instalar la app" en el pie. **Desplegada el 26-sep-2026** y comprobada en
   producción: las siete páginas en 200, las cabeceras de `sw.js` y del manifiesto correctas, la
   `VERSION` desplegada al día, la consola limpia y la banda apareciendo. Ver "La invitación a
   instalar".
@@ -260,6 +260,17 @@ Trampas, todas cubiertas por `probar-instalar.js`:
   que la banda salga del documento; sin una guarda, el segundo revienta. El arnés lo encontró.
 - **"Ahora no" se recuerda 30 días** en `localStorage`. Sin eso la banda reaparece en cada visita.
   Si `localStorage` lanza (incógnito), se muestra igual: preferible insistir a no ofrecerla nunca.
+- **El pie lleva un "Instalar la app"** para deshacer un "ahora no" sin esperar los 30 días.
+  ⚠️ **Solo aparece cuando hay una invitación guardada**, nunca fijo: sin `beforeinstallprompt` —
+  ya instalada, iOS, navegador sin soporte — sería un enlace muerto, y el visitante no tendría
+  forma de entender por qué no pasa nada al pulsarlo. Es un `<button>`, no un `<a>`: hace algo, no
+  navega. El separador ` · ` va dentro del mismo `<span>` que el botón, o al quitarlo queda
+  colgando del pie.
+- **El "ahora no" cierra la banda pero NO quita el enlace del pie.** Quitarlo ahí sería dejar sin
+  salida justo al que la necesita.
+- **Se espera a `DOMContentLoaded` por el pie, no por la banda.** `marco.js` monta el pie ahí, así
+  que antes no hay dónde colgar el enlace. `marco.js` va antes que `pwa.js` en las ocho páginas, o
+  sea que su manejador corre primero y cuando llega el de `pwa.js` el pie ya existe.
 - **El nombre sale de `Marco.NOMBRE`**, no repetido aquí; `marco.js` va antes que `pwa.js` en las
   ocho páginas.
 - **iOS no dispara `beforeinstallprompt`** y no hay forma de provocarlo: en iPhone sigue siendo
@@ -374,8 +385,9 @@ colocado después de la primera ruta, la función del borde vuelta agnóstica de
 `start_url` absoluto, un icono que miente sobre su tamaño, un archivo nuevo en `web/` que no entró
 al armazón, una página sin registrar el service worker, el CSS cambiado sin sellar `VERSION`, el
 guardia de origen del service worker borrado, el listener de `beforeinstallprompt` movido dentro de
-`'load'`, un `preventDefault()` quitado, el icono de la banda con barra inicial y un "ahora no" que
-no se recuerda.
+`'load'`, un `preventDefault()` quitado, el icono de la banda con barra inicial, un "ahora no" que
+no se recuerda, el enlace del pie puesto siempre (enlace muerto), ese enlace borrado por el "ahora
+no", su separador quedándose suelto, y el enlace hecho `<a>` en vez de `<button>`.
 
 ⚠️ El del guardia de origen **no fallaba** en la primera versión de `probar-sw.js`, porque ninguna URL
 de tasas tiene una ruta que empiece por `/cuentas-claras/`: el filtro por ruta la tapaba. Hubo que

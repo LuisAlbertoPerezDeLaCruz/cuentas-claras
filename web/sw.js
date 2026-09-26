@@ -29,7 +29,7 @@
    decorativo: sin el, editar el CSS y desplegar dejaria a los visitantes con el
    CSS viejo cacheado y sin forma de saberlo. Lo comprueba y lo actualiza
    "node infra/probar-pwa.js --sellar". */
-var VERSION = 'v1-9745b9ec5a13fb5b';
+var VERSION = 'v1-87d151a3a80d0323';
 var CACHE = 'cuentas-claras-' + VERSION;
 
 /* La subruta en la que esta montado el sitio, deducida de la ubicacion de este
