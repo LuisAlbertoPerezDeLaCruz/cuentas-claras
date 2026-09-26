@@ -31,6 +31,12 @@ Restricciones que marcan todas las decisiones:
 - ✅ **PWA hecha (25-sep-2026).** Manifiesto, iconos, service worker y dos arneses de prueba
   nuevos. Las tasas **no** entran a la caché, y eso está comprobado ejecutando el service worker,
   no solo leyéndolo. Ver "PWA".
+- ✅ **La PWA vista en Chrome (26-sep-2026).** Alcance del service worker en `/cuentas-claras/`,
+  `start_url` correcto, consola limpia y las 27 entradas del armazón en la caché. Comprobado
+  apagando `servir.sh` y recargando: la página carga entera desde la caché y **la tasa de Binance
+  cambió en esa misma recarga**, o sea que el armazón se cachea y las tasas no.
+- ✅ **Invitación a instalar (26-sep-2026).** Banda propia + diálogo nativo, con
+  `infra/probar-instalar.js` (20 comprobaciones). Ver "La invitación a instalar".
 - ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
   texto propio de Luis, no inventado: **no reescribirlo**.
@@ -57,6 +63,7 @@ aws/
     ├── probar-funcion-rutas.js ← pruebas de la función del borde (node, sin desplegar)
     ├── probar-pwa.js           ← manifiesto, armazón y versión del service worker
     ├── probar-sw.js            ← ejecuta el service worker en Node y dispara sus manejadores
+    ├── probar-instalar.js      ← ejecuta pwa.js con un DOM simulado (la banda de instalación)
     ├── generar-iconos.sh       ← regenera los PNG de los iconos desde el SVG (necesita rsvg-convert)
     └── DEPLOY.md               ← guía de despliegue paso a paso
 ```
@@ -227,6 +234,35 @@ propósito un caso que parece rebuscado y no lo es: `https://otro-dominio.com/cu
 el único que distingue "filtra por origen" de "filtra por ruta", y sin él la prueba pasaba igual
 con el guardia de origen borrado.
 
+### La invitación a instalar
+
+**Hecha el 26-sep-2026.** En Android se instalaba solo a mano, desde el menú del navegador. Ahora
+`pwa.js` inyecta una banda — *«¿Instalar Cuentas Claras? Se abre como una app y funciona sin
+conexión»*, con **Instalar** y **Ahora no** — y el botón abre el diálogo **nativo** del navegador.
+
+⚠️ **No existe instalar sin que el usuario lo pida, en ningún navegador.** `prompt()` exige un
+gesto del usuario: llamarlo al cargar la página no muestra nada. Lo más cerca de "automático" es
+esto — ofrecerlo en cuanto el navegador avisa que el sitio es instalable. El texto del diálogo que
+sale después lo pone el navegador, no el sitio.
+
+Trampas, todas cubiertas por `probar-instalar.js`:
+
+- **El listener de `beforeinstallprompt` va al cargar el script, NO dentro de `'load'`.** El evento
+  se dispara muy pronto, a veces antes de que el documento esté listo, y **no se repite**:
+  registrarlo tarde es no verlo nunca y que la banda no aparezca jamás. En el escritorio el
+  navegador a veces lo dispara más tarde y el error *parece* no existir.
+- **Hay que llamar a `preventDefault()`** o el navegador se queda con el evento y guardarlo para
+  después deja de servir.
+- **`prompt()` se puede llamar una sola vez por evento.** Un doble toque encola dos clics antes de
+  que la banda salga del documento; sin una guarda, el segundo revienta. El arnés lo encontró.
+- **"Ahora no" se recuerda 30 días** en `localStorage`. Sin eso la banda reaparece en cada visita.
+  Si `localStorage` lanza (incógnito), se muestra igual: preferible insistir a no ofrecerla nunca.
+- **El nombre sale de `Marco.NOMBRE`**, no repetido aquí; `marco.js` va antes que `pwa.js` en las
+  ocho páginas.
+- **iOS no dispara `beforeinstallprompt`** y no hay forma de provocarlo: en iPhone sigue siendo
+  *Compartir → Añadir a pantalla de inicio*. La banda simplemente no aparece; no se inventa un
+  mensaje falso.
+
 ### Decisiones y trampas
 
 - **`sw.js` va dentro de la subruta**, no en la raíz del bucket: un service worker no puede
@@ -312,16 +348,19 @@ node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta 
 node infra/probar-funcion-rutas.js   # los 19 casos de la función del borde
 node infra/probar-pwa.js             # manifiesto, armazón y versión del service worker
 node infra/probar-sw.js              # ejecuta el service worker y dispara sus manejadores
+node infra/probar-instalar.js        # ejecuta pwa.js y dispara beforeinstallprompt
 ```
 
-Las cuatro corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
+Las cinco corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
 propósito: una barra inicial suelta, un `<base href>` que se separa de `RutaBase`, un `<base>`
 colocado después de la primera ruta, la función del borde vuelta agnóstica de la subruta, un
 `start_url` absoluto, un icono que miente sobre su tamaño, un archivo nuevo en `web/` que no entró
-al armazón, una página sin registrar el service worker, el CSS cambiado sin sellar `VERSION`, y el
-guardia de origen del service worker borrado.
+al armazón, una página sin registrar el service worker, el CSS cambiado sin sellar `VERSION`, el
+guardia de origen del service worker borrado, el listener de `beforeinstallprompt` movido dentro de
+`'load'`, un `preventDefault()` quitado, el icono de la banda con barra inicial y un "ahora no" que
+no se recuerda.
 
-⚠️ Ese último sabotaje **no fallaba** en la primera versión de `probar-sw.js`, porque ninguna URL
+⚠️ El del guardia de origen **no fallaba** en la primera versión de `probar-sw.js`, porque ninguna URL
 de tasas tiene una ruta que empiece por `/cuentas-claras/`: el filtro por ruta la tapaba. Hubo que
 agregar el caso `https://otro-dominio.com/cuentas-claras/tasas.json`. Vale la pena recordarlo: una
 prueba que pasa no dice nada hasta que se comprueba que puede fallar.
@@ -372,10 +411,10 @@ quedó obsoleta y GitHub la rechaza. La que autentica es `~/.ssh/id_rsa`, que es
 
 ## Próximos pasos
 
-1. **Mirar la PWA en Chrome.** La lógica está probada en Node, pero falta verla en
-   DevTools > Application: que el manifiesto no dé advertencias, que el *scope* del service worker
-   sea `/cuentas-claras/` y que en modo *Offline* las tarjetas de tasas digan "No disponible".
-   Queda pendiente porque la extensión de Chrome no estaba conectada el 25-sep-2026.
+1. **Probar la banda de instalación en el teléfono.** En Chrome de escritorio se vio funcionando
+   (26-sep-2026). Falta el Android de verdad: que aparezca, que el botón abra el diálogo nativo y
+   que al instalar quede el icono. Chrome sólo dispara `beforeinstallprompt` si considera el sitio
+   instalable, y en el escritorio ya lo hizo, que es buena señal.
 2. **Activar `www`** si se quiere: el certificado ya lo cubre, pero falta agregarlo como alias en
    la plantilla (hoy sólo admite uno) y crear su registro en Route 53.
 3. **API** en API Gateway + Lambda; empezar por leer el BCV del lado servidor. Ver "API
