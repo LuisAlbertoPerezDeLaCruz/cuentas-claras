@@ -36,7 +36,10 @@ Restricciones que marcan todas las decisiones:
   apagando `servir.sh` y recargando: la página carga entera desde la caché y **la tasa de Binance
   cambió en esa misma recarga**, o sea que el armazón se cachea y las tasas no.
 - ✅ **Invitación a instalar (26-sep-2026).** Banda propia + diálogo nativo, con
-  `infra/probar-instalar.js` (20 comprobaciones). Ver "La invitación a instalar".
+  `infra/probar-instalar.js` (20 comprobaciones). **Desplegada el 26-sep-2026** y comprobada en
+  producción: las siete páginas en 200, las cabeceras de `sw.js` y del manifiesto correctas, la
+  `VERSION` desplegada al día, la consola limpia y la banda apareciendo. Ver "La invitación a
+  instalar".
 - ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
   texto propio de Luis, no inventado: **no reescribirlo**.
@@ -262,6 +265,13 @@ Trampas, todas cubiertas por `probar-instalar.js`:
 - **iOS no dispara `beforeinstallprompt`** y no hay forma de provocarlo: en iPhone sigue siendo
   *Compartir → Añadir a pantalla de inicio*. La banda simplemente no aparece; no se inventa un
   mensaje falso.
+- ⚠️ **En la primerísima visita a un origen la banda NO sale, y no es un fallo.** Chrome solo
+  considera instalable un sitio cuyo service worker ya **controla** la página, y en la primera
+  carga el service worker apenas se está registrando. Aparece desde la segunda carga. Se vio al
+  desplegar el 26-sep-2026: en producción no salió, y con `navigator.serviceWorker.controller`
+  todavía en `null` estaba todo correcto — caché nueva, `pwa.js` nuevo, sin descarte guardado. Al
+  recargar apareció. **Si al probar en un teléfono no sale: recarga una vez antes de buscar el
+  error en otro sitio.**
 
 ### Decisiones y trampas
 
