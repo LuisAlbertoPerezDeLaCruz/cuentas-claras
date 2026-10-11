@@ -46,6 +46,7 @@ function crearEntorno() {
   const almacen = new Map();          // nombre de cache -> Map(url -> respuesta)
   const manejadores = {};
   const pedidosALaRed = [];
+  const modosDeCache = [];            // el 'cache' de cada Request que paso por addAll
   let red = null;                     // funcion url -> respuesta, o null = sin conexion
 
   function cacheDe(nombre) {
@@ -53,7 +54,9 @@ function crearEntorno() {
     const m = almacen.get(nombre);
     return {
       addAll: (rutas) => Promise.all(rutas.map((r) => {
-        const url = new URL(r, ORIGEN + BASE + 'sw.js').href;
+        // Acepta cadenas y Request simulados; de estos se anota el modo de cache.
+        if (r && typeof r === 'object' && r.cache) modosDeCache.push(r.cache);
+        const url = (r && r.url) ? r.url : new URL(r, ORIGEN + BASE + 'sw.js').href;
         const res = red && red(url);
         if (!res || !res.ok) return Promise.reject(new Error('no se pudo cachear ' + r));
         m.set(url, res);
@@ -86,7 +89,16 @@ function crearEntorno() {
       if (!red) return Promise.reject(new TypeError('Failed to fetch'));
       return Promise.resolve(red(url));
     },
-    Response: { error: () => respuesta(null, { ok: false }) }
+    Response: { error: () => respuesta(null, { ok: false }) },
+
+    /* Request simulado. Node trae uno de verdad, pero exige URL absoluta y
+       sw.js las pasa relativas a su propia ubicacion, como debe. */
+    Request: function (entrada, opciones) {
+      const o = opciones || {};
+      this.url = new URL(String(entrada), ORIGEN + BASE + 'sw.js').href;
+      this.cache = o.cache || 'default';
+      this.method = o.method || 'GET';
+    }
   };
 
   return {
@@ -94,6 +106,7 @@ function crearEntorno() {
     manejadores,
     almacen,
     pedidosALaRed,
+    modosDeCache,
     conectar: (fn) => { red = fn; },
     desconectar: () => { red = null; }
   };
@@ -106,8 +119,8 @@ function sitioEnLinea(url) {
 
 function cargarSw(entorno) {
   const fuente = fs.readFileSync(path.join(WEB, 'sw.js'), 'utf8');
-  new Function('self', 'caches', 'fetch', 'Response', 'URL', fuente)(
-    entorno.self, entorno.caches, entorno.fetch, entorno.Response, URL);
+  new Function('self', 'caches', 'fetch', 'Response', 'URL', 'Request', fuente)(
+    entorno.self, entorno.caches, entorno.fetch, entorno.Response, URL, entorno.Request);
 }
 
 // Un evento como el que recibe sw.js, guardando si se llamo a respondWith.
@@ -140,6 +153,19 @@ c.manejadores.install(evInstall);
   const nombres = [...c.almacen.keys()];
   if (nombres.length !== 1) fallar('install() dejo ' + nombres.length + ' caches, esperaba 1');
   else ok('install() creo la cache ' + nombres[0]);
+
+  /* El armazon se descarga saltando la cache HTTP del navegador. Sin esto, un
+     archivo que el navegador considere todavia fresco entraria VIEJO en la cache
+     NUEVA y el hash de VERSION no lo detectaria: version nueva, contenido viejo.
+     Es la clase de fallo que no se ve, porque la pagina carga perfecta. */
+  const sinReload = c.modosDeCache.filter((m) => m !== 'reload').length;
+  if (c.modosDeCache.length === 0) {
+    fallar('install() no pidio el armazon con Request: no se puede saltar la cache HTTP');
+  } else if (sinReload > 0) {
+    fallar(sinReload + ' archivos del armazon se piden sin cache: \'reload\'');
+  } else {
+    ok('install() pide los ' + c.modosDeCache.length + " archivos con cache: 'reload'");
+  }
 
   const guardadas = c.almacen.get(nombres[0]);
   ok('el armazon quedo guardado: ' + guardadas.size + ' entradas');

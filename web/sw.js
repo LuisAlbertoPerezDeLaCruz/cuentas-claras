@@ -29,7 +29,7 @@
    decorativo: sin el, editar el CSS y desplegar dejaria a los visitantes con el
    CSS viejo cacheado y sin forma de saberlo. Lo comprueba y lo actualiza
    "node infra/probar-pwa.js --sellar". */
-var VERSION = 'v1-68d9f50f409f0547';
+var VERSION = 'v1-bcaf86e9ce3bd36c';
 var CACHE = 'cuentas-claras-' + VERSION;
 
 /* La subruta en la que esta montado el sitio, deducida de la ubicacion de este
@@ -79,10 +79,19 @@ self.addEventListener('install', function (evento) {
   evento.waitUntil(
     caches.open(CACHE)
       .then(function (cache) {
-        // cache.addAll() es todo o nada: si un solo archivo falla, la version
-        // entera se descarta y sigue mandando la anterior. Es lo que se quiere:
-        // mejor una cache vieja completa que una nueva a medias.
-        return cache.addAll(ARMAZON);
+        /* cache.addAll() es todo o nada: si un solo archivo falla, la version
+           entera se descarta y sigue mandando la anterior. Es lo que se quiere:
+           mejor una cache vieja completa que una nueva a medias.
+
+           ⚠ cache: 'reload' salta la cache HTTP del navegador. Sin eso, un
+           archivo que el navegador considere todavia fresco se copiaria VIEJO
+           dentro de la cache NUEVA, y el hash de VERSION no lo detectaria: la
+           version seria nueva y el contenido viejo. Los archivos del sitio se
+           sirven sin Cache-Control, asi que el navegador les aplica frescura
+           heuristica y el riesgo es real, no teorico. */
+        return cache.addAll(ARMAZON.map(function (ruta) {
+          return new Request(ruta, { cache: 'reload' });
+        }));
       })
       // Sin esto la version nueva se queda esperando a que se cierren todas las
       // pestanas abiertas. Aqui es seguro tomar el control de inmediato porque
