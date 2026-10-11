@@ -29,7 +29,7 @@
    decorativo: sin el, editar el CSS y desplegar dejaria a los visitantes con el
    CSS viejo cacheado y sin forma de saberlo. Lo comprueba y lo actualiza
    "node infra/probar-pwa.js --sellar". */
-var VERSION = 'v1-bcaf86e9ce3bd36c';
+var VERSION = 'v1-00a7f68566379917';
 var CACHE = 'cuentas-claras-' + VERSION;
 
 /* La subruta en la que esta montado el sitio, deducida de la ubicacion de este
@@ -56,6 +56,7 @@ var ARMAZON = [
   'assets/css/base.css',
   'assets/js/campo-monto.js',
   'assets/js/conversor.js',
+  'assets/js/copiar.js',
   'assets/js/cuotas.js',
   'assets/js/dividir.js',
   'assets/js/feriados.js',
