@@ -256,6 +256,16 @@ a { color: var(--acento); }
 }
 .segmentado button[aria-pressed="true"] { background: var(--acento); color: #06121f; font-weight: 600; }
 
+/* Selector de fecha valor de la tasa BCV. El .segmentado y la línea de la
+   diferencia van juntos: la frase explica qué hace el botón, así que se le pega en
+   vez de heredar el margen de 16px que .segmentado lleva en general.
+
+   No necesita nada más: la variante de móvil de .segmentado (más abajo) ya lo
+   convierte en dos botones a ancho completo. */
+.fecha-valor { margin: 16px 0 0; }
+.fecha-valor .segmentado { margin-bottom: 6px; }
+.fecha-valor .nota { margin-top: 0; }
+
 /* ------------------------------ desglose --------------------------------- */
 
 .desglose { margin: 18px 0 0; border-top: 1px solid var(--borde); }

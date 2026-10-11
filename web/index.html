@@ -60,12 +60,32 @@
         </article>
       </div>
 
+      <!-- Elegir la fecha valor. El BCV publica por la tarde la tasa del siguiente
+           día hábil, así que durante unas horas hay dos publicadas a la vez: los
+           comercios pequeños cobran con la del día siguiente y los grandes con la
+           vigente, y las dos son legales.
+
+           Se oculta ENTERO cuando no hay dos tasas distintas que elegir: un selector
+           de una sola opción es una elección falsa. Lo gobierna tasas.js, igual que
+           las tarjetas. -->
+      <div class="fecha-valor" id="selector-fecha" hidden>
+        <div class="segmentado" role="group" aria-label="Fecha valor de la tasa BCV">
+          <button type="button" id="fv-vigente" aria-pressed="true">Vigente hoy</button>
+          <button type="button" id="fv-proxima" aria-pressed="false">Próxima</button>
+        </div>
+        <p class="nota" id="dif-tasas" aria-live="polite"></p>
+      </div>
+
+      <p class="nota" id="nota-selector" hidden></p>
+
       <p class="aviso" id="aviso-tasas" hidden></p>
 
       <p class="nota">
         El BCV publica por la tarde la tasa con <strong>fecha valor</strong> del siguiente día
-        hábil. Aquí se muestra la tasa <strong>vigente</strong>, por eso puede diferir de la que
-        aparece en ese momento en bcv.org.ve.
+        hábil, así que durante unas horas hay dos tasas publicadas a la vez. Los comercios
+        grandes suelen cobrar con la <strong>vigente</strong> y los pequeños con la del
+        <strong>próximo día hábil</strong>; las dos son legales. Cuando hay dos, puedes
+        elegir arriba con cuál calcular.
       </p>
     </section>
 
