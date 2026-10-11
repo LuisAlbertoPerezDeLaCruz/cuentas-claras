@@ -51,7 +51,7 @@ Restricciones que marcan todas las decisiones:
   desplegado el mismo día.
 - ✅ **Botón de copiar en los 26 montos del sitio (11-oct-2026).** Declarativo con `data-copiar` y
   un módulo compartido; las cinco herramientas no cambiaron una línea. Arnés nuevo
-  (`infra/probar-copiar.js`) con 15 sabotajes comprobados. El botón es el icono universal en SVG y
+  (`infra/probar-copiar.js`) con 18 sabotajes comprobados. El botón es el icono universal en SVG y
   copia solo el número, sin la moneda. Ver "Copiar los montos".
 - ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada, y ahora además tiene un
   motivo concreto: sustituiría al repo comunitario del que hoy depende la tasa próxima.
@@ -267,6 +267,24 @@ compartido se justifica cuando de verdad lo usan varias páginas.
 
 ### Trampas, todas cubiertas por `probar-copiar.js`
 
+- ⚠️ **El botón va en la `.fila` del desglose o en la `.tarjeta`, no en el `<dd>` ni junto al `<p>`
+  del número.** Es lo que le permite **compartir línea con el monto**, a su derecha y justificado:
+  dentro del `<dd>` caía debajo, porque el `.equivalente` es un bloque. `contenedorDe()` sube hasta
+  el primer ancestro `.fila` o `.tarjeta`.
+  - La comparación de clase es **por token exacto**, no por subcadena: `tarjeta-valor` no es
+    `tarjeta`. Con el markup de hoy el defecto no se nota (el recorrido empieza en el padre del
+    monto y nunca topa con un `tarjeta-*` intermedio), así que hay un caso de prueba con el monto
+    dentro de `.tarjeta-meta` —estructura plausible— para que la afirmación sea verificable en vez
+    de quedar escrita y sin cubrir.
+  - Esos dos contenedores se eligieron porque **nadie reasigna su contenido**: las herramientas solo
+    los ocultan y los muestran (`hidden`). Los `<dd>` y los `<p>` del número sí se reescriben en
+    cada tecla.
+  - **`copiar.js` marca el contenedor con `data-copiable`** y el CSS se apoya en eso en vez de usar
+    `:has()`, que los Android algo viejos no entienden: el icono quedaría descolocado y nada
+    avisaría. En las filas, `dt { margin-right: auto }` junta el número y el icono a la derecha, en
+    vez de que `space-between` reparta el ancho entre los tres. En las tarjetas hace falta una
+    rejilla con áreas **explícitas**, porque el orden del DOM es título, monto, meta, botón y la
+    colocación automática lo mandaría a otra fila.
 - ⚠️ **El botón se inyecta como HERMANO del monto, nunca como hijo.** Las herramientas asignan
   `elemento.textContent` en cada pulsación de tecla, y eso **destruye a los hijos**: un botón dentro
   del monto desaparecería al primer recálculo, sin ningún error. Es la misma trampa del `<dd>` con
@@ -636,17 +654,19 @@ selector siempre; pintar `+0,00 %`; mezclar el euro de la vigente con el dólar 
 parsear la fecha con getters locales; avisar a la página solo tras un `fetch`; y borrar un `id` del
 selector en `conversor/index.html`.
 
-Para `probar-copiar.js` se corrieron **15 sabotajes** y los quince se ponen rojos: inyectar el botón
+Para `probar-copiar.js` se corrieron **18 sabotajes** y los dieciocho se ponen rojos: inyectar el botón
 dentro del monto; dar por bueno cualquier texto en vez de exigir un dígito; no cancelar el
 temporizador anterior; dejar que el aviso sobreviva a un cambio de monto; fingir éxito cuando el
 portapapeles falla; no vigilar los cambios del monto; no limpiar el estado visual; etiqueta genérica
 sin decir qué monto copia; una página con montos marcados y sin el `<script>`; sacar `copiar.js` del
 `ARMAZON`; copiar el texto entero en vez de solo el número; quedarse con el último número en vez
-del primero; no cambiar el icono al confirmar; usar un carácter Unicode en vez de un SVG; y no
-actualizar la etiqueta al confirmar.
+del primero; no cambiar el icono al confirmar; usar un carácter Unicode en vez de un SVG; no
+actualizar la etiqueta al confirmar; colgar el botón del `<dd>` (caería debajo del número); no marcar
+el contenedor; y comparar la clase por subcadena.
 
-⚠️ Uno de ellos **pasaba en verde**: "no cambiar el icono al confirmar". Las aserciones miraban el
-marcador `data-icono` y no el SVG dibujado. Van catalogados dos casos así en este archivo, y la
+⚠️ **Dos de ellos pasaron en verde** y hubo que reforzar las pruebas. "No cambiar el icono al
+confirmar": las aserciones miraban el marcador `data-icono` y no el SVG dibujado. Y "comparar la
+clase por subcadena", que no tenía ningún efecto observable con el markup actual. Van catalogados dos casos así en este archivo, y la
 moraleja es siempre la misma: una prueba que pasa no dice nada hasta que se comprueba que puede
 fallar.
 

@@ -109,7 +109,22 @@ function crearEntorno(o) {
   valor.dataset.copiar = '';
 
   let contenedor;
-  if (op.forma === 'tarjeta') {
+  let dd = null;
+  if (op.forma === 'tarjeta-meta') {
+    /* Un monto dentro de la linea de meta de una tarjeta. Hoy no existe, pero es
+       una estructura plausible, y es la unica que distingue comparar la clase por
+       token exacto de buscarla como subcadena: con subcadena, "tarjeta-meta"
+       contaria como "tarjeta" y el boton colgaria de ahi, perdiendo el titulo. */
+    contenedor = crearElemento('article');
+    contenedor.className = 'tarjeta';
+    const titulo = crearElemento('h3', 'Dolar BCV');
+    titulo.className = 'tarjeta-titulo';
+    contenedor.appendChild(titulo);
+    const meta = crearElemento('p');
+    meta.className = 'tarjeta-meta';
+    contenedor.appendChild(meta);
+    meta.appendChild(valor);
+  } else if (op.forma === 'tarjeta') {
     contenedor = crearElemento('article');
     contenedor.className = 'tarjeta tarjeta-resultado';
     const titulo = crearElemento('h3', 'Dolar BCV');
@@ -121,17 +136,19 @@ function crearEntorno(o) {
     meta.className = 'tarjeta-meta';
     contenedor.appendChild(meta);
   } else {
-    const fila = crearElemento('div');
-    fila.className = 'fila';
+    /* La estructura real del desglose: el boton tiene que acabar en la .fila,
+       NO en el <dd>, que es lo que le permite compartir linea con el numero. */
+    contenedor = crearElemento('div');
+    contenedor.className = 'fila';
     const dt = crearElemento('dt', 'IVA (16 %)');
-    contenedor = crearElemento('dd');
-    contenedor.previousElementSibling = dt;
-    fila.appendChild(dt);
-    fila.appendChild(contenedor);
-    contenedor.appendChild(valor);
+    dd = crearElemento('dd');
+    dd.previousElementSibling = dt;
+    contenedor.appendChild(dt);
+    contenedor.appendChild(dd);
+    dd.appendChild(valor);
     const equiv = crearElemento('span');
     equiv.className = 'equivalente';
-    contenedor.appendChild(equiv);
+    dd.appendChild(equiv);
   }
   marcados.push(valor);
 
@@ -179,6 +196,7 @@ function crearEntorno(o) {
     Copiar: ventana.Copiar,
     valor: valor,
     contenedor: contenedor,
+    dd: dd,
     copiados: copiados,
     relojes: relojes,
     boton: function () { return contenedor.hijos.find((h) => h.className === 'copiar') || null; },
@@ -205,8 +223,14 @@ async function principal() {
     const b = e.boton();
     if (!b) { fallar('no se inyecto ningun boton'); }
     else {
-      ok('el boton se inyecta en el contenedor del monto');
+      ok('el boton se inyecta en la fila del desglose');
       igual(e.valor.hijos.length, 0, 'el monto NO tiene hijos: el boton no esta dentro');
+      /* Y tampoco en el <dd>: ahi caeria DEBAJO del numero, porque el
+         .equivalente es un bloque. En la fila comparte linea con el. */
+      igual(e.dd.hijos.some((h) => h.className === 'copiar'), false,
+        'ni dentro del <dd>: iria debajo del numero, no a su derecha');
+      igual(e.contenedor.dataset.copiable, 'si',
+        'la fila queda marcada para que el CSS la maquete sin usar :has()');
       igual(b.tagName, 'BUTTON', 'es un <button>');
       igual(b.type, 'button', 'con type=button, para no enviar el formulario');
       igual(b.dataset.icono, 'copiar', 'arranca con el icono de copiar');
@@ -403,6 +427,18 @@ async function principal() {
       'en las tarjetas, del titulo de la tarjeta');
     igual(e.boton().getAttribute('aria-live'), 'polite',
       'y el cambio de etiqueta se anuncia');
+    igual(e.contenedor.dataset.copiable, 'si', 'la tarjeta tambien queda marcada');
+    igual(e.contenedor.className.indexOf('tarjeta') === 0, true,
+      'y el contenedor es la tarjeta, no el <p> del monto');
+  }
+
+  {
+    const e = crearEntorno({ forma: 'tarjeta-meta' });
+    e.montar();
+    igual(e.contenedor.dataset.copiable, 'si',
+      'un monto anidado mas abajo sigue colgando de la tarjeta, no de .tarjeta-meta');
+    igual(e.boton().getAttribute('aria-label'), 'Copiar Dolar BCV',
+      'y por eso conserva el titulo en la etiqueta');
   }
 
   console.log('--- el markup del sitio ---');

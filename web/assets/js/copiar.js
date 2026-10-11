@@ -12,6 +12,10 @@
  * recálculo, sin ningún error. Es la misma trampa que ya costó un rato con un
  * <dd> que llevaba un <span> dentro.
  *
+ * Y va en la FILA del desglose o en la TARJETA, no en el <dd> ni junto al <p> del
+ * número: es lo que le permite compartir línea con el monto y quedar justificado
+ * a la derecha. Dentro del <dd> caía debajo, porque el .equivalente es un bloque.
+ *
  * ⚠ Que haya algo que copiar se decide por si el texto TIENE UN DÍGITO, no por
  * una lista de textos de relleno. "—", "No disponible", "Cargando…" y "No
  * aplica" no tienen ninguno; cualquier monto real sí. Enumerar los rellenos
@@ -66,19 +70,36 @@ window.Copiar = (function () {
     return m ? m[0] : '';
   }
 
-  /* Con quince botones en una página, un lector de pantalla diría "Copiar"
-     quince veces sin decir qué. La etiqueta de la fila (<dt>) o el título de la
-     tarjeta dan el contexto. */
+  // Comparación por token exacto: "tarjeta-valor" NO es "tarjeta".
+  function tieneClase(nodo, clase) {
+    if (!nodo || !nodo.className) return false;
+    return String(nodo.className).split(/\s+/).indexOf(clase) !== -1;
+  }
+
+  /* Dónde se cuelga el botón: la .fila del desglose o la .tarjeta.
+
+     Tiene que ser un elemento cuyo contenido NADIE reasigne. Las herramientas
+     solo ocultan y muestran filas y tarjetas (hidden), nunca las reescriben; los
+     <dd> y los <p> del número sí se reescriben en cada tecla. */
+  function contenedorDe(valor) {
+    var nodo = valor.parentNode;
+    while (nodo) {
+      if (tieneClase(nodo, 'fila') || tieneClase(nodo, 'tarjeta')) return nodo;
+      nodo = nodo.parentNode;
+    }
+    return valor.parentNode;
+  }
+
+  /* Con veintiséis botones sin texto, un lector de pantalla diría "Copiar"
+     veintiséis veces sin decir qué. La etiqueta de la fila (<dt>) o el título de
+     la tarjeta dan el contexto. */
   function etiquetaDe(valor) {
-    var dd = valor.parentNode;
-    var previo = dd && dd.previousElementSibling;
+    var padre = valor.parentNode;
+    var previo = padre && padre.previousElementSibling;
     if (previo && previo.tagName === 'DT') return previo.textContent.trim();
 
-    var tarjeta = dd;
-    while (tarjeta && (!tarjeta.className || tarjeta.className.indexOf('tarjeta') === -1)) {
-      tarjeta = tarjeta.parentNode;
-    }
-    var titulo = tarjeta && tarjeta.querySelector && tarjeta.querySelector('.tarjeta-titulo');
+    var cont = contenedorDe(valor);
+    var titulo = cont && cont.querySelector && cont.querySelector('.tarjeta-titulo');
     return titulo ? titulo.textContent.trim() : '';
   }
 
@@ -194,7 +215,11 @@ window.Copiar = (function () {
       });
     }
 
-    valor.parentNode.appendChild(boton);
+    /* El marcador lo pone el JS en vez de usar :has() en el CSS, que los Android
+       algo viejos no entienden y dejaría el icono descolocado sin aviso. */
+    var contenedor = contenedorDe(valor);
+    contenedor.dataset.copiable = 'si';
+    contenedor.appendChild(boton);
     return boton;
   }
 

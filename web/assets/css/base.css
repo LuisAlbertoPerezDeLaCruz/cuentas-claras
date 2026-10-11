@@ -297,9 +297,9 @@ a { color: var(--acento); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   min-width: 32px;
   min-height: 32px;
-  margin-top: 6px;
   border: 1px solid var(--borde);
   border-radius: var(--radio);
   background: transparent;
@@ -317,6 +317,33 @@ a { color: var(--acento); }
 .copiar:hover { color: var(--texto); border-color: var(--texto-suave); }
 .copiar[data-aviso="ok"] { color: var(--ok); border-color: var(--ok); }
 .copiar[data-aviso="error"] { color: var(--error); border-color: var(--error); }
+
+/* El icono comparte línea con el monto, a su derecha y separado del borde.
+
+   copiar.js marca el contenedor con data-copiable en vez de que el CSS use
+   :has(), que los Android algo viejos no entienden: el icono quedaría
+   descolocado y nada avisaría. */
+.fila[data-copiable] { align-items: center; gap: 10px; padding-right: 4px; }
+
+/* El margen automático se come el espacio libre de la fila, así que el número y
+   el icono quedan juntos a la derecha en vez de repartirse el ancho entre los
+   tres (que es lo que hace justify-content: space-between con tres hijos). */
+.fila[data-copiable] dt { margin-right: auto; }
+
+/* En las tarjetas el monto es un <p> de ancho completo, así que hace falta una
+   rejilla para poner el icono a su derecha. Las áreas van explícitas porque el
+   orden del DOM es título, monto, meta, botón: la colocación automática lo
+   pondría en otra fila. */
+.tarjeta[data-copiable] {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 10px;
+  align-items: center;
+}
+.tarjeta[data-copiable] .tarjeta-titulo { grid-area: 1 / 1 / 2 / 3; }
+.tarjeta[data-copiable] .tarjeta-valor  { grid-area: 2 / 1 / 3 / 2; min-width: 0; }
+.tarjeta[data-copiable] .copiar         { grid-area: 2 / 2 / 3 / 3; }
+.tarjeta[data-copiable] .tarjeta-meta   { grid-area: 3 / 1 / 4 / 3; }
 
 /* ------------------------------ listas ----------------------------------- */
 
