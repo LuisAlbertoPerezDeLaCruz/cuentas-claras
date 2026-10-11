@@ -40,7 +40,14 @@ Restricciones que marcan todas las decisiones:
   producción: las siete páginas en 200, las cabeceras de `sw.js` y del manifiesto correctas, la
   `VERSION` desplegada al día, la consola limpia y la banda apareciendo. Ver "La invitación a
   instalar".
-- ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada.
+- ✅ **Elegir la fecha valor (11-oct-2026).** El sitio ya no sirve solo a los comercios grandes: un
+  `.segmentado` en la portada y el conversor permite calcular con la tasa **vigente** o con la del
+  **siguiente día hábil**, y la elección persiste. Arnés nuevo (`infra/probar-tasas.js`) con **17
+  sabotajes comprobados**, de los que 6 pasaban en verde al principio. Comprobado también contra las
+  APIs reales: 100 USD dan 87.565,05 Bs con la vigente y 87.679,76 Bs con la del martes 13.
+  ⬜ **Falta verlo en el navegador**: la extensión de Chrome no estaba conectada.
+- ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada, y ahora además tiene un
+  motivo concreto: sustituiría al repo comunitario del que hoy depende la tasa próxima.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
   texto propio de Luis, no inventado: **no reescribirlo**.
 - ✅ **Publicado en GitHub**: https://github.com/LuisAlbertoPerezDeLaCruz/cuentas-claras (público).
@@ -64,6 +71,7 @@ aws/
     ├── template.yaml           ← CloudFormation
     ├── probar-rutas.js         ← comprueba las rutas del sitio (node, sin servidor)
     ├── probar-funcion-rutas.js ← pruebas de la función del borde (node, sin desplegar)
+    ├── probar-tasas.js         ← ejecuta tasas.js con un DOM simulado y un reloj fijo
     ├── probar-pwa.js           ← manifiesto, armazón y versión del service worker
     ├── probar-sw.js            ← ejecuta el service worker en Node y dispara sus manejadores
     ├── probar-instalar.js      ← ejecuta pwa.js con un DOM simulado (la banda de instalación)
@@ -108,19 +116,131 @@ puramente estático.
 
 **Respaldo** (las tres en una llamada, también con CORS `*`):
 `https://raw.githubusercontent.com/JCZR2000/ComercioPrecioAPI/main/tasas_cambio.json` →
-`dolar`, `euro`, `usdt`. Solo rellena las que hayan fallado.
+`dolar`, `euro`, `usdt`, `fecha_bcv`, `timestamp`, `human_date`.
 
-### Desfase de "fecha valor" (no es un bug)
+⚠️ **Desde el 11-oct-2026 ya no es solo un respaldo.** Se pide **siempre**, en paralelo con las
+otras tres, porque su campo `fecha_bcv` es hoy la única forma de leer la tasa que el BCV **acaba
+de publicar** para el siguiente día hábil. Sigue tapando huecos exactamente como antes —campo por
+campo, sin pisar nada que dolarapi haya traído— pero además es una de las dos tasas que el usuario
+puede elegir. Ver "Elegir la fecha valor".
+
+⚠️ **`human_date` NO es la fecha valor**, es el instante del raspado. Para el BCV la fecha es
+`fecha_bcv`; `human_date`/`timestamp` solo sirven para Binance, que es lo único cuyo metadato de
+tiempo significa "cuándo se leyó". Confundirlos era un error latente: hasta el 11-oct-2026, cuando
+el respaldo tapaba el hueco del dólar, la tarjeta imprimía como fecha valor un día que el BCV nunca
+publicó.
+
+### Desfase de "fecha valor": dejó de ser una advertencia y es una función
 
 El BCV publica por la tarde la tasa con **fecha valor del siguiente día hábil**. Si abres
-bcv.org.ve al final de la tarde verás un número distinto al de la página: el BCV ya muestra el de
-mañana y las APIs sirven el vigente hoy. Confirmado el 23-sep a las 4:28 p. m. (bcv.org.ve daba
-854,4637 con fecha valor 24-sep mientras la API seguía en 853,4993) y confirmado de nuevo el 24-sep
-por la mañana, cuando la API ya servía 854,4637.
+bcv.org.ve al final de la tarde verás un número distinto al que sirven las APIs: el BCV ya muestra
+el de mañana. Confirmado el 23-sep a las 4:28 p. m. (bcv.org.ve daba 854,4637 con fecha valor
+24-sep mientras la API seguía en 853,4993) y confirmado de nuevo el 24-sep por la mañana, cuando la
+API ya servía 854,4637.
 
-Por eso las tarjetas del BCV muestran **"Fecha valor: DD/MM/AAAA"** sin hora y solo Binance lleva
-hora. La fecha se formatea con regex sobre el texto ISO, **sin pasar por `Date`**, para que el huso
-horario no la corra un día.
+**Durante esas horas hay dos tasas publicadas a la vez, y las dos son legales.** No es una
+curiosidad: es una decisión de negocio real. Los comercios pequeños cobran con la del día siguiente
+porque les es favorable; los grandes (Farmatodo) con la vigente. Hasta el 11-oct-2026 el sitio solo
+servía a los segundos. Hoy el usuario elige. Ver "Elegir la fecha valor".
+
+Las tarjetas del BCV muestran **"Fecha valor: DD/MM/AAAA"** sin hora y solo Binance lleva hora. La
+fecha se formatea con regex sobre el texto ISO, **sin pasar por `Date`**, para que el huso horario
+no la corra un día.
+
+## Elegir la fecha valor
+
+**Hecho el 11-oct-2026.** En la portada y en el conversor hay un `.segmentado` —**Vigente hoy** |
+**Desde el martes 13**— que decide con cuál de las dos tasas del BCV se calcula todo el sitio. La
+elección se guarda y persiste entre visitas. Piezas: `web/assets/js/tasas.js` (casi todo),
+`Formato.diaIso`/`diaCorto`/`hoyEnVenezuela`, el markup en las dos páginas y tres reglas
+`.fecha-valor` en `base.css`.
+
+**La decisión que mantuvo el cambio pequeño: `valores.bcv` ya NO significa "la vigente", significa
+"la elegida".** `tasas.js` sigue mutando `valores`/`fechas` en sitio y exponiéndolos por
+referencia, así que `conversor.js`, `iva-igtf.js` y `dividir.js` **no cambiaron ni una línea de
+cálculo**, y el promedio BCV-euro se mueve solo. ⚠️ Quien necesite específicamente la tasa de hoy
+tiene que leer `juegos.vigente.bcv`.
+
+### Cuál es la vigente y cuál la próxima se decide por FECHA, nunca por fuente
+
+Es la regla que manda. `clasificar(candidatos, hoy)` recibe una **lista** de juegos
+(`{origen, fecha, bcv, euro, rancio}`) y reparte comparando fechas:
+
+- la **vigente** es la fecha más reciente que ya rige (`fecha <= hoy`) y de la que alguien trae el
+  dólar;
+- la **próxima** es la futura más cercana, solo si va por delante de la vigente, trae el dólar y no
+  sale de un archivo rancio.
+
+⚠️ **Nunca asumir "dolarapi = vigente, respaldo = próxima".** Antes de la publicación de la tarde
+las dos fuentes traen la **misma** fecha valor, y un martes por la mañana el respaldo puede ir por
+delante de dolarapi con una tasa que **ya rige**, no con una futura. Ese caso —dolarapi en 12,
+respaldo en 13, hoy 13— es el que justifica el arnés entero, y es el único que distingue "comparar
+las dos fechas entre sí" de "compararlas con hoy".
+
+`hoy` sale de `Formato.hoyEnVenezuela()`, que usa `Intl.DateTimeFormat` con
+`timeZone: 'America/Caracas'` y lo lee con **`formatToParts`**, no formateando a texto: así el
+patrón de la configuración regional del visitante es irrelevante. Lleva un respaldo restando cuatro
+horas al UTC (Venezuela está fija en -04:00 desde 2016, sin horario de verano) por si el motor no
+trae ICU. Depende del reloj del dispositivo, que no se puede garantizar; por eso todas las
+decisiones que dependen de él solo pueden **ocultar** una tasa o reetiquetarla, **nunca fabricar un
+número**, y la tarjeta imprime siempre la fecha valor real al lado de la cifra.
+
+Las fechas son cadenas `AAAA-MM-DD` y se comparan con `<` y `>` **directamente**: son de ancho fijo
+y con ceros a la izquierda, así que el orden alfabético es el cronológico. Cero `Date`, cero riesgo
+de huso.
+
+### Trampas, todas cubiertas por `probar-tasas.js`
+
+- **El juego se arma campo por campo, no se elige entero.** `armarJuego` toma, de todos los
+  candidatos con **esa misma fecha valor**, el primero que trae cada campo; dolarapi va primero en
+  la lista, así que el respaldo solo aporta lo que falte. La primera versión elegía un candidato
+  ganador completo y eso **descartaba un euro bueno de dolarapi** cuando el respaldo ganaba el
+  desempate. Lo encontró el arnés.
+- ⚠️ **Nunca mezclar el euro de una fecha valor con el dólar de otra.** El promedio BCV-euro saldría
+  equivocado y *parecería correcto*. Si la próxima trae dólar pero no euro, el euro queda en "No
+  disponible" y el promedio también; no se rellena con el de la vigente.
+- **El selector se oculta ENTERO cuando no hay dos tasas distintas.** Un selector de una sola opción
+  es una elección falsa. Y `pintarSelector()` es la **única** función que escribe los dos
+  `aria-pressed` y el `hidden`, siempre desde `seleccion` y nunca de forma incremental, para que
+  pulsar "Actualizar tasas" no pueda dejarlos contradiciéndose.
+- **Sin próxima, lo único que merece una frase es el caso de quien la había elegido** (`#nota-selector`).
+  Para los demás, que el BCV no la haya publicado todavía no es un fallo y no se avisa de nada.
+- ⚠️ **Si el usuario guardó "próxima" y hoy no hay, la preferencia NO se borra.** El deseo y el
+  efectivo son dos cosas distintas: `seleccion.cual` cae a `'vigente'` y `localStorage` sigue
+  diciendo `'proxima'`. Es el mismo razonamiento que `igtfDeseado`; borrarla en silencio le quitaría
+  al usuario su elección por visitar el sitio un martes por la mañana.
+- **La preferencia vive en `tasas.js`, no en un archivo nuevo.** Clave `tasaBcvPreferida`, valores
+  `'vigente'`|`'proxima'`, validados **en cada lectura** (lo guardado puede ser basura). Un
+  `preferencias.js` nuevo habría que meterlo en el `ARMAZON` de `sw.js`, resellar `VERSION` y
+  acordarse de añadir el `<script>` en cada página — y **eso último no lo comprueba ningún arnés**:
+  la página olvidada pasaría las pruebas y fallaría en el navegador del visitante.
+- ⚠️ **Hace falta una copia de la preferencia en memoria** (`preferenciaEnMemoria`), no solo
+  `localStorage`. En incógnito `localStorage` **lanza**, y sin esa copia cada lectura volvía a
+  `'vigente'`: el usuario pulsaba el botón y no pasaba nada. Lo encontró el arnés. Ahora la elección
+  vale para la visita y lo único que se pierde es recordarla.
+- **La línea de la diferencia compara lo PINTADO, no el float.** `Formato.tasa(a) === Formato.tasa(b)`:
+  con cuatro decimales un delta de 1e-6 es invisible, y afirmar una diferencia que el usuario no
+  puede ver sería falso. En ese caso dice «el BCV publicó la misma tasa», nunca «+0,00 %».
+- **La frase se muestra siempre que haya próxima**, sea cual sea la elegida: es una afirmación sobre
+  los datos («X más que la vigente»), no sobre la selección. Así se queda quieta mientras los
+  números de arriba se mueven, que es lo que hace legible el alternar.
+- **Frescura del respaldo con `timestamp`, no con `human_date`.** Más de **24 h** sin actualizarse y
+  no se ofrece como próxima aunque su `fecha_bcv` parezca futura; más de **6 h** y usándose como
+  vigente (dolarapi caída), `#aviso-tasas` remite a bcv.org.ve. Un archivo congelado además se
+  descarta solo, sin código extra: su `fecha_bcv` deja de avanzar y la comparación de fechas lo saca.
+- **La etiqueta del botón sale de `Formato.aFechaLocal`**, que construye el `Date` desde las partes
+  del regex. ⚠️ Y por eso ahí **no** va `timeZone`: el `Date` es medianoche local, y releerlo en otra
+  zona podría desplazar el día de la semana. La ida y la vuelta usan la misma zona.
+- **`feriados.js` no se tocó.** No hace falta `siguienteDiaHabil`: la fecha valor viene dada en los
+  datos. Exponer esa IIFE anónima, cuyas funciones tocan el DOM de su propia página, habría sido
+  pagar un precio real por nada.
+- **Las notas de `/iva-igtf/` y `/dividir-cuenta/` se unificaron en `Tasas.textoNota()`.** Estaban
+  duplicadas carácter por carácter y la versión nueva tiene tres ramas: tres oportunidades de que
+  una página dijera una fecha valor y la otra, otra. `probar-tasas.js` falla si el literal vuelve a
+  aparecer en esos archivos.
+- **`infra/template.yaml` NO se tocó**, y está comprobado, no supuesto: la tasa próxima viene de
+  `raw.githubusercontent.com`, que ya estaba en `connect-src`, y `localStorage` no lo gobierna la
+  CSP. Tampoco cambió el `ARMAZON` de `sw.js`, porque no hay archivo nuevo en `web/`.
 
 ## Decisiones y trampas encontradas
 
@@ -345,6 +465,11 @@ Trampas a revisar al planificar:
 
 - **API + CSP**: hay que **agregar el dominio de la API a `connect-src`** en la plantilla, o dejará
   de cargar sin error visible en la página.
+- **La API hereda un sitio ya preparado.** `clasificar()` recibe una **lista** de candidatos, así
+  que la Lambda entra como una fuente más: emite `{bcv, euro, fecha}` por juego, se empuja al mismo
+  array y gana por mérito de fecha, sin tocar la UI, la preferencia ni el arnés. Eso devuelve al
+  repo comunitario `ComercioPrecioAPI` a su papel de red de seguridad, que es donde debería estar.
+  Al moverla hay que acordarse de meter su URL en la lista de ajenas de `probar-sw.js`.
 - **API + service worker**: si la API se sirve desde otro dominio, el service worker ni la ve, que
   es lo correcto. Pero si algún día se pone **detrás del mismo dominio** (por ejemplo
   `/api/` en la misma distribución de CloudFront), pasaría a ser del mismo origen. Seguiría fuera
@@ -372,6 +497,7 @@ expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propi
 
 ```bash
 ./servir.sh                          # http://127.0.0.1:8765/cuentas-claras/
+node infra/probar-tasas.js           # las dos tasas del BCV, la preferencia y los casos raros
 node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta y existen
 node infra/probar-funcion-rutas.js   # los 19 casos de la función del borde
 node infra/probar-pwa.js             # manifiesto, armazón y versión del service worker
@@ -379,7 +505,7 @@ node infra/probar-sw.js              # ejecuta el service worker y dispara sus m
 node infra/probar-instalar.js        # ejecuta pwa.js y dispara beforeinstallprompt
 ```
 
-Las cinco corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
+Las seis corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
 propósito: una barra inicial suelta, un `<base href>` que se separa de `RutaBase`, un `<base>`
 colocado después de la primera ruta, la función del borde vuelta agnóstica de la subruta, un
 `start_url` absoluto, un icono que miente sobre su tamaño, un archivo nuevo en `web/` que no entró
@@ -388,6 +514,29 @@ guardia de origen del service worker borrado, el listener de `beforeinstallpromp
 `'load'`, un `preventDefault()` quitado, el icono de la banda con barra inicial, un "ahora no" que
 no se recuerda, el enlace del pie puesto siempre (enlace muerto), ese enlace borrado por el "ahora
 no", su separador quedándose suelto, y el enlace hecho `<a>` en vez de `<button>`.
+
+Para `probar-tasas.js` se corrieron **17 sabotajes**, y el ejercicio valió la pena: **6 pasaron en
+verde la primera vez.** Cuatro eran sabotajes mal escritos (anclas que ya no existían, parches que
+no cambiaban nada), pero **dos eran huecos reales de las pruebas**:
+
+- La validación de lo guardado en `localStorage` no era observable: con el filtro borrado,
+  `seleccion.cual` salía `'vigente'` igual. Hubo que afirmar sobre `Tasas.preferencia.leer()`.
+- El sabotaje "parsear la fecha con `new Date`" **no fallaba** mientras usara `toISOString()`, que
+  es UTC y da igual el huso. El patrón peligroso de verdad son los getters **locales**
+  (`getDate()`, `getMonth()`), y hasta reescribirlo así el arnés no demostraba nada sobre husos.
+
+Los 17 que hoy se ponen rojos: ignorar el reloj y usar una fecha fija; clasificar por nombre de
+fuente; volver a `human_date` como fecha valor del BCV; usar `fecha_bcv` para Binance; pedir el
+respaldo solo cuando falte algo; dejar que el respaldo pise lo que dolarapi trajo; quitar el
+`try/catch` de la preferencia; no validar lo guardado; "limpiar" la preferencia cuando no hay
+próxima; poner `'proxima'` por omisión; **reasignar `valores` en vez de mutarlo**; mostrar el
+selector siempre; pintar `+0,00 %`; mezclar el euro de la vigente con el dólar de la próxima;
+parsear la fecha con getters locales; avisar a la página solo tras un `fetch`; y borrar un `id` del
+selector en `conversor/index.html`.
+
+`probar-tasas.js` se corre además con `TZ=Pacific/Kiritimati` (+14) y `TZ=Pacific/Pago_Pago` (−11),
+los dos extremos, porque un arnés de fechas que solo se corre en el huso de la máquina no prueba lo
+que dice probar.
 
 ⚠️ El del guardia de origen **no fallaba** en la primera versión de `probar-sw.js`, porque ninguna URL
 de tasas tiene una ruta que empiece por `/cuentas-claras/`: el filtro por ruta la tapaba. Hubo que
