@@ -45,7 +45,10 @@ Restricciones que marcan todas las decisiones:
   **siguiente día hábil**, y la elección persiste. Arnés nuevo (`infra/probar-tasas.js`) con **17
   sabotajes comprobados**, de los que 6 pasaban en verde al principio. Comprobado también contra las
   APIs reales: 100 USD dan 87.565,05 Bs con la vigente y 87.679,76 Bs con la del martes 13.
-  ⬜ **Falta verlo en el navegador**: la extensión de Chrome no estaba conectada.
+  ✅ Verificado en la web por Luis. ⚠️ **En la app instalada de Android no se actualizó al
+  abrirla**, y eso destapó un defecto del service worker que no era de esta función sino de todos
+  los despliegues anteriores: ver el relevo de versión en "PWA → Decisiones y trampas". Arreglado y
+  desplegado el mismo día.
 - ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada, y ahora además tiene un
   motivo concreto: sustituiría al repo comunitario del que hoy depende la tasa próxima.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
@@ -431,9 +434,34 @@ Trampas, todas cubiertas por `probar-instalar.js`:
   desplegar deja a quien tenga la PWA instalada con el CSS anterior: la página carga perfecta y
   muestra lo de antes. `node infra/probar-pwa.js` falla si el hash no corresponde, y
   `--sellar` lo actualiza. **Hay que sellarlo antes de cada despliegue.**
-- **`skipWaiting()` + `clients.claim()`** se usan a pesar de la advertencia habitual, porque aquí
-  no hay piezas que se pidan después: cada página carga todo su JavaScript de una vez y con
-  nombres fijos, así que no puede quedar una mezcla de versión vieja y nueva.
+- **`skipWaiting()` + `clients.claim()`** se usan a pesar de la advertencia habitual, porque dentro
+  de una misma carga no hay piezas que se pidan después: cada página carga todo su JavaScript de
+  una vez y con nombres fijos.
+- ⚠️ **Pero eso NO evitaba una mezcla de versión vieja y nueva, y durante un tiempo este archivo
+  afirmó que sí.** El error se vio en la app instalada de Android el 11-oct-2026. Las **páginas**
+  van primero a la red y los **recursos** primero a la caché, así que en la primera apertura tras
+  un despliegue llega el **HTML nuevo** y, atendido todavía por el service worker viejo, el
+  **JavaScript viejo**. La página se ve perfecta, le faltan las funciones nuevas y **no hay ningún
+  error en consola**: el selector de fecha valor estaba en el HTML y el `tasas.js` viejo no lo
+  mostraba nunca. Se arreglaba solo en la segunda apertura, pero en una app instalada "abrir otra
+  vez" puede ser reanudar la actividad sin navegar, así que podía durar mucho más.
+
+  La salida es **recargar una vez cuando el service worker nuevo toma el control**
+  (`controllerchange` en `pwa.js`), que es el complemento que le faltaba a `skipWaiting()`.
+  Dos trampas, las dos con prueba y sabotaje:
+  - **El guardia `veniaControlada` es imprescindible.** En la primera visita a un origen la página
+    carga sin controlador y el service worker recién registrado la reclama: eso dispara
+    `controllerchange` sin que exista ninguna versión vieja. Recargar ahí es una recarga gratuita,
+    y encima en la visita en la que aparece la invitación a instalar.
+  - **El listener y la lectura de `controller` van al cargar el script, NO dentro de `'load'`**,
+    por el mismo motivo que `beforeinstallprompt`: `clients.claim()` puede llegar antes, y leer
+    `controller` tarde haría que el guardia creyera que es la primera visita.
+- ⚠️ **`install()` descarga el armazón con `cache: 'reload'`.** Sin eso, un archivo que el navegador
+  considere todavía fresco se copia **viejo** dentro de la caché **nueva**, y el hash de `VERSION`
+  no lo detecta: la versión es nueva y el contenido viejo. Los archivos del sitio se sirven **sin
+  `Cache-Control`** (solo `sw.js` lo lleva), así que el navegador les aplica frescura heurística y
+  el riesgo es real. Pendiente menor: poner `Cache-Control` explícito en el `sync` del despliegue,
+  que cerraría el agujero también por el otro lado.
 - **Los iconos son arcos, no `<text>`.** Un `<text>` se renderiza con la tipografía de cada
   máquina, así que el icono saldría distinto en cada conversión a PNG. Los PNG están comiteados:
   no hay paso de compilación y el despliegue es un `aws s3 sync` de `web/`.
