@@ -182,11 +182,12 @@
     calcular();
   }
 
+  /* El texto lo arma tasas.js, no esta página: hay dos tasas del BCV publicadas a la
+     vez (vigente y próximo día hábil) y solo ese módulo sabe cuál está en uso y con
+     qué fecha valor. Aquí se RESPETA la preferencia, pero el selector no se repite:
+     vive en la portada y en el conversor. */
   function mostrarTasa() {
-    var tasa = window.Tasas.valores.bcv;
-    $('nota-tasa').textContent = tasa === null
-      ? 'No se pudo consultar la tasa del BCV: los importes se muestran solo en la moneda elegida.'
-      : 'Equivalencias calculadas con la tasa BCV vigente: ' + F.tasa(tasa) + ' por dólar.';
+    $('nota-tasa').textContent = window.Tasas.textoNota();
     calcular();
   }
 
