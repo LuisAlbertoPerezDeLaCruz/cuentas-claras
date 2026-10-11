@@ -294,7 +294,11 @@ a { color: var(--acento); }
    con él. Las reglas de tamaño y peso son explícitas para que no herede el
    1,2rem en negrita de .fila-total. */
 .copiar {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
   margin-top: 6px;
   border: 1px solid var(--borde);
   border-radius: var(--radio);
@@ -305,9 +309,11 @@ a { color: var(--acento); }
   font-weight: 500;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 4px 8px;
   cursor: pointer;
 }
+/* Sin esto el SVG se asienta en la linea base y descuadra el boton. */
+.copiar svg { display: block; }
 .copiar:hover { color: var(--texto); border-color: var(--texto-suave); }
 .copiar[data-aviso="ok"] { color: var(--ok); border-color: var(--ok); }
 .copiar[data-aviso="error"] { color: var(--error); border-color: var(--error); }

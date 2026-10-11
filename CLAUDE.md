@@ -51,7 +51,8 @@ Restricciones que marcan todas las decisiones:
   desplegado el mismo día.
 - ✅ **Botón de copiar en los 26 montos del sitio (11-oct-2026).** Declarativo con `data-copiar` y
   un módulo compartido; las cinco herramientas no cambiaron una línea. Arnés nuevo
-  (`infra/probar-copiar.js`) con 10 sabotajes comprobados. Ver "Copiar los montos".
+  (`infra/probar-copiar.js`) con 15 sabotajes comprobados. El botón es el icono universal en SVG y
+  copia solo el número, sin la moneda. Ver "Copiar los montos".
 - ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada, y ahora además tiene un
   motivo concreto: sustituiría al repo comunitario del que hoy depende la tasa próxima.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
@@ -283,10 +284,28 @@ compartido se justifica cuando de verdad lo usan varias páginas.
 - **Si el portapapeles falla, se dice.** `navigator.clipboard` puede no existir (http:// sin cifrar,
   navegador viejo) o rechazar por permisos. El botón pone **"No se pudo"**, nunca finge éxito: creer
   que copiaste un precio y pegar otra cosa es peor que saber que no se copió.
-- **Se copia el monto tal como se ve**, con su moneda: `1.250.000,00 Bs`, no `1250000`. Es lo que se
-  pega en WhatsApp para decirle un precio a un cliente, que es el uso real. Consecuencia asumida: en
-  `/cuotas/` dos filas llevan un paréntesis explicativo y se copia completo
-  (`$120,00 (6 × $20,00)`). Quitarlo exigiría parsear el texto y rompería el "copio lo que veo".
+- ⚠️ **Se copia SOLO EL NÚMERO**, sin moneda ni texto alrededor: de `1.250.000,00 Bs` sale
+  `1.250.000,00`, y de `5,47 % mensual` sale `5,47`. Lo que se pega tiene que ser un número
+  utilizable, no una frase. El formato se deja como se ve (es-VE: punto de miles, coma decimal).
+  Dos detalles que el extractor tiene que respetar y que cubren sus pruebas:
+  - **El primer número, no el principio del texto.** `/cuotas/` escribe «Sales ganando $12,00»,
+    que empieza con palabras.
+  - **Solo el primero.** `$120,00 (6 × $20,00)` lleva dos y lo que se quiere es el total; quedarse
+    con el último daría `20,00`, y en «$1.353,90 (12 cuotas)» daría `12`.
+
+  El grupo de miles del regex exige **exactamente tres dígitos** tras el punto, para que un punto de
+  final de frase no entre en la captura.
+- ⚠️ **El botón es el icono universal de copiar (dos hojas superpuestas) en SVG**, no la palabra
+  "Copiar" ni un carácter Unicode. SVG por lo mismo que los iconos de la PWA no usan `<text>`: un
+  glifo como `⧉` se dibuja distinto en cada sistema. Al confirmar cambia a un visto.
+  - Y por eso **`aria-label` deja de ser un extra y pasa a ser obligatorio**: un botón sin texto no
+    le dice nada a un lector de pantalla. Hay `title` además, que es lo único que ve el ratón
+    encima de un icono. Los dos cambian con el estado.
+  - ⚠️ **No basta comprobar el marcador `data-icono`**: un pintado que ponga `listo` y dibuje el
+    mismo SVG de copiar pasaba la prueba mientras el usuario no veía ningún cambio. La prueba
+    compara el **SVG dibujado** contra el de base. Lo encontró un sabotaje.
+  - **En el fallo sí se usan palabras** ("No se pudo"). Es la ruta rara y ahí lo que importa es que
+    se entienda: un icono de error en un botón de copiar no dice nada.
 - **`aria-label` dice QUÉ monto copia**, sacado del `<dt>` de la fila o del título de la tarjeta. Con
   veintiséis botones, un lector de pantalla diría "Copiar" veintiséis veces sin más contexto.
 - **Se normalizó el markup de `/cuotas/`.** Tenía dos formas: unos montos eran `<dd><span id>` y
@@ -617,12 +636,19 @@ selector siempre; pintar `+0,00 %`; mezclar el euro de la vigente con el dólar 
 parsear la fecha con getters locales; avisar a la página solo tras un `fetch`; y borrar un `id` del
 selector en `conversor/index.html`.
 
-Para `probar-copiar.js` se corrieron **10 sabotajes** y los diez se ponen rojos: inyectar el botón
+Para `probar-copiar.js` se corrieron **15 sabotajes** y los quince se ponen rojos: inyectar el botón
 dentro del monto; dar por bueno cualquier texto en vez de exigir un dígito; no cancelar el
-temporizador anterior; dejar que "Copiado" sobreviva a un cambio de monto; fingir éxito cuando el
+temporizador anterior; dejar que el aviso sobreviva a un cambio de monto; fingir éxito cuando el
 portapapeles falla; no vigilar los cambios del monto; no limpiar el estado visual; etiqueta genérica
-sin decir qué monto copia; una página con montos marcados y sin el `<script>`; y sacar `copiar.js`
-del `ARMAZON`.
+sin decir qué monto copia; una página con montos marcados y sin el `<script>`; sacar `copiar.js` del
+`ARMAZON`; copiar el texto entero en vez de solo el número; quedarse con el último número en vez
+del primero; no cambiar el icono al confirmar; usar un carácter Unicode en vez de un SVG; y no
+actualizar la etiqueta al confirmar.
+
+⚠️ Uno de ellos **pasaba en verde**: "no cambiar el icono al confirmar". Las aserciones miraban el
+marcador `data-icono` y no el SVG dibujado. Van catalogados dos casos así en este archivo, y la
+moraleja es siempre la misma: una prueba que pasa no dice nada hasta que se comprueba que puede
+fallar.
 
 `probar-tasas.js` se corre además con `TZ=Pacific/Kiritimati` (+14) y `TZ=Pacific/Pago_Pago` (−11),
 los dos extremos, porque un arnés de fechas que solo se corre en el huso de la máquina no prueba lo

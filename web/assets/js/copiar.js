@@ -17,6 +17,16 @@
  * aplica" no tienen ninguno; cualquier monto real sí. Enumerar los rellenos
  * obligaría a actualizar este archivo cada vez que una herramienta cambie el
  * suyo, y el síntoma sería un botón que copia un guion.
+ *
+ * ⚠ Se copia SOLO EL NÚMERO, sin moneda ni texto alrededor: de "1.250.000,00 Bs"
+ * sale "1.250.000,00", y de "$120,00 (6 × $20,00)" sale "120,00". Lo que se pega
+ * es un número utilizable, no una frase. El formato se deja tal como se ve
+ * (es-VE: punto de miles, coma decimal), que es lo que el usuario reconoce.
+ *
+ * ⚠ El botón no lleva texto, lleva el icono universal de copiar (dos hojas
+ * superpuestas) en SVG con currentColor. SVG y no un carácter Unicode por lo
+ * mismo que los iconos de la PWA no usan <text>: un glifo se dibuja distinto en
+ * cada sistema. Y por eso aria-label es obligatorio, no decorativo.
  */
 
 'use strict';
@@ -25,8 +35,35 @@ window.Copiar = (function () {
   var ETIQUETA = 'Copiar';
   var TIEMPO_AVISO_MS = 1800;
 
+  /* aria-hidden porque el significado lo da el aria-label del botón; si no, un
+     lector de pantalla no tendría nada que decir de un botón sin texto. */
+  var ABRE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true" focusable="false">';
+
+  var ICONOS = {
+    // Dos hojas superpuestas: el icono universal de copiar.
+    copiar: ABRE + '<rect x="9" y="9" width="11" height="11" rx="2"></rect>' +
+      '<path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg>',
+    // Un visto: la confirmación.
+    listo: ABRE + '<path d="M20 6 9 17l-5-5"></path></svg>'
+  };
+
   function hayNumero(texto) {
     return /\d/.test(texto);
+  }
+
+  /* El primer número del texto, con su formato tal cual.
+
+     Tiene que ser el PRIMER número y no el principio del texto: /cuotas/ escribe
+     "Sales ganando $12,00", que empieza con palabras. Y tiene que ser solo el
+     primero: "$120,00 (6 × $20,00)" lleva dos, y lo que se quiere es el total.
+
+     El grupo de miles exige exactamente tres dígitos tras el punto, para que un
+     punto de final de frase no entre en la captura. */
+  function soloNumero(texto) {
+    var m = String(texto).match(/-?\d+(?:\.\d{3})*(?:,\d+)?/);
+    return m ? m[0] : '';
   }
 
   /* Con quince botones en una página, un lector de pantalla diría "Copiar"
@@ -57,15 +94,45 @@ window.Copiar = (function () {
     var boton = document.createElement('button');
     boton.type = 'button';
     boton.className = 'copiar';
-    boton.textContent = ETIQUETA;
-    // El propio botón anuncia el resultado: su texto es el que cambia.
+    // El botón anuncia el resultado: su etiqueta es la que cambia.
     boton.setAttribute('aria-live', 'polite');
 
     var nombre = etiquetaDe(valor);
-    boton.setAttribute('aria-label', nombre ? 'Copiar ' + nombre : ETIQUETA);
+    var deBase = nombre ? 'Copiar ' + nombre : ETIQUETA;
 
     var reloj = null;
-    var copiado = null;   // el texto que se copió, para saber si ya quedó viejo
+    var copiado = null;   // el número que se copió, para saber si ya quedó viejo
+
+    /* Un solo sitio pinta el botón, para que el icono, el estado y la etiqueta no
+       puedan quedar contradiciéndose. estado: '' | 'ok' | 'error'.
+
+       En el fallo sí se usan palabras. Es la ruta rara y lo que importa ahí es
+       que se entienda: un icono de error en un botón de copiar no dice nada. */
+    function pintar(estado) {
+      if (estado === 'error') {
+        boton.textContent = 'No se pudo';
+        boton.dataset.aviso = 'error';
+        boton.dataset.icono = 'error';
+        boton.setAttribute('aria-label', 'No se pudo copiar' + (nombre ? ' ' + nombre : ''));
+        boton.setAttribute('title', 'No se pudo copiar');
+        return;
+      }
+
+      if (estado === 'ok') {
+        boton.innerHTML = ICONOS.listo;
+        boton.dataset.aviso = 'ok';
+        boton.dataset.icono = 'listo';
+        boton.setAttribute('aria-label', (nombre ? nombre + ' copiado' : 'Copiado'));
+        boton.setAttribute('title', 'Copiado');
+        return;
+      }
+
+      boton.innerHTML = ICONOS.copiar;
+      delete boton.dataset.aviso;
+      boton.dataset.icono = 'copiar';
+      boton.setAttribute('aria-label', deBase);
+      boton.setAttribute('title', deBase);
+    }
 
     function restaurar() {
       if (reloj) {
@@ -73,30 +140,33 @@ window.Copiar = (function () {
         reloj = null;
       }
       copiado = null;
-      boton.textContent = ETIQUETA;
-      delete boton.dataset.aviso;
+      pintar('');
     }
 
-    function avisar(mensaje, clase) {
+    function avisar(estado) {
       // Un segundo toque no puede apilar temporizadores: el primero en vencer
       // restauraría el botón mientras el segundo aviso todavía debería verse.
       if (reloj) clearTimeout(reloj);
-      boton.textContent = mensaje;
-      boton.dataset.aviso = clase;
+      pintar(estado);
       reloj = setTimeout(restaurar, TIEMPO_AVISO_MS);
     }
+
+    pintar('');
 
     boton.addEventListener('click', function () {
       var texto = valor.textContent.trim();
       if (!hayNumero(texto)) return;
 
-      copiado = texto;
-      pedirCopia(texto)
-        .then(function () { avisar('Copiado', 'ok'); })
+      // Solo el numero: lo que se pega tiene que ser utilizable.
+      var numero = soloNumero(texto) || texto;
+
+      copiado = numero;
+      pedirCopia(numero)
+        .then(function () { avisar('ok'); })
         .catch(function () {
           // Falla de verdad: el usuario tiene que saber que no se copió nada.
           copiado = null;
-          avisar('No se pudo', 'error');
+          avisar('error');
         });
     });
 
@@ -111,7 +181,7 @@ window.Copiar = (function () {
         restaurar();
         return;
       }
-      if (copiado !== null && texto !== copiado) restaurar();
+      if (copiado !== null && soloNumero(texto) !== copiado) restaurar();
     }
 
     sincronizar();
@@ -138,5 +208,5 @@ window.Copiar = (function () {
 
   document.addEventListener('DOMContentLoaded', function () { montar(); });
 
-  return { montar: montar, activar: activar, hayNumero: hayNumero };
+  return { montar: montar, activar: activar, hayNumero: hayNumero, soloNumero: soloNumero };
 })();

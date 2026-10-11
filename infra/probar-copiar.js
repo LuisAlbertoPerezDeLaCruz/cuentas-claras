@@ -70,10 +70,21 @@ function crearElemento(etiqueta, texto) {
     }
   };
 
+  Object.defineProperty(el, 'innerHTML', {
+    get: function () { return this._html || ''; },
+    set: function (v) {
+      this._html = String(v);
+      this._texto = '';
+      this.hijos.forEach((h) => { h.parentNode = null; });
+      this.hijos = [];
+    }
+  });
+
   Object.defineProperty(el, 'textContent', {
     get: function () { return this._texto; },
     set: function (v) {
       this._texto = String(v);
+      this._html = '';
       /* Igual que en el navegador: asignar textContent se lleva a los hijos.
          Es la fidelidad que hace que este arnes sirva para algo. */
       this.hijos.forEach((h) => { h.parentNode = null; });
@@ -198,6 +209,10 @@ async function principal() {
       igual(e.valor.hijos.length, 0, 'el monto NO tiene hijos: el boton no esta dentro');
       igual(b.tagName, 'BUTTON', 'es un <button>');
       igual(b.type, 'button', 'con type=button, para no enviar el formulario');
+      igual(b.dataset.icono, 'copiar', 'arranca con el icono de copiar');
+      igual(b.textContent, '', 'sin texto: el boton es solo el icono');
+      b.innerHTML.indexOf('<svg') === 0 ? ok('el icono es un SVG, no un caracter Unicode')
+        : fallar('el icono no es un SVG: ' + b.innerHTML.slice(0, 40));
     }
   }
 
@@ -238,7 +253,7 @@ async function principal() {
     await asentar();
     e.valor.textContent = '—';
     igual(e.boton().hidden, true, 'si el monto se vacia, el boton se oculta');
-    igual(e.boton().textContent, 'Copiar', 'y vuelve a su etiqueta');
+    igual(e.boton().dataset.icono, 'copiar', 'y vuelve al icono de copiar');
   }
 
   console.log('--- copiar ---');
@@ -246,12 +261,21 @@ async function principal() {
   {
     const e = crearEntorno({ texto: '1.250.000,00 Bs' });
     e.montar();
+    /* Se guarda el SVG de base para compararlo despues. Mirar solo data-icono no
+       basta: un pintado que ponga el marcador "listo" y dibuje el mismo icono
+       pasaria la prueba mientras el usuario no ve ningun cambio. Lo encontro un
+       sabotaje. */
+    const iconoBase = e.boton().innerHTML;
     e.boton().pulsar();
     await asentar();
     igual(e.copiados.length, 1, 'una pulsacion copia una vez');
-    igual(e.copiados[0], '1.250.000,00 Bs', 'copia el monto tal como se ve, con su moneda');
-    igual(e.boton().textContent, 'Copiado', 'y lo confirma en el boton');
+    igual(e.copiados[0], '1.250.000,00', 'copia SOLO el numero, sin la moneda');
+    igual(e.boton().dataset.icono, 'listo', 'y lo confirma cambiando al icono de visto');
     igual(e.boton().dataset.aviso, 'ok', 'con su estado visual');
+    igual(e.boton().getAttribute('aria-label'), 'IVA (16 %) copiado', 'y lo dice en la etiqueta');
+    e.boton().innerHTML !== iconoBase
+      ? ok('y el SVG dibujado cambia de verdad, no solo el marcador')
+      : fallar('data-icono dice "listo" pero se dibuja el mismo icono de copiar');
   }
 
   {
@@ -268,8 +292,9 @@ async function principal() {
     e.boton().pulsar();
     await asentar();
     igual(e.copiados.length, 0, 'portapapeles denegado: no se copio nada');
-    igual(e.boton().textContent, 'No se pudo', 'y el usuario se entera');
+    igual(e.boton().textContent, 'No se pudo', 'y el usuario se entera, con palabras');
     igual(e.boton().dataset.aviso, 'error', 'con estado de error, no de exito');
+    igual(e.boton().getAttribute('aria-label'), 'No se pudo copiar IVA (16 %)', 'tambien en la etiqueta');
   }
 
   {
@@ -287,10 +312,11 @@ async function principal() {
     e.montar();
     e.boton().pulsar();
     await asentar();
-    igual(e.boton().textContent, 'Copiado', 'dice Copiado');
+    igual(e.boton().dataset.icono, 'listo', 'muestra el visto');
     e.avanzar();
-    igual(e.boton().textContent, 'Copiar', 'y al vencer el tiempo vuelve a Copiar');
+    igual(e.boton().dataset.icono, 'copiar', 'y al vencer el tiempo vuelve al icono de copiar');
     igual(e.boton().dataset.aviso, undefined, 'sin estado visual residual');
+    igual(e.boton().getAttribute('aria-label'), 'Copiar IVA (16 %)', 'y a su etiqueta de base');
   }
 
   {
@@ -302,7 +328,7 @@ async function principal() {
     e.boton().pulsar();
     await asentar();
     igual(e.relojes.length, 1, 'dos toques dejan un solo temporizador');
-    igual(e.boton().textContent, 'Copiado', 'y el aviso sigue en pie');
+    igual(e.boton().dataset.icono, 'listo', 'y el aviso sigue en pie');
   }
 
   {
@@ -313,7 +339,7 @@ async function principal() {
     e.boton().pulsar();
     await asentar();
     e.valor.textContent = '32,00 Bs';
-    igual(e.boton().textContent, 'Copiar', 'si el monto cambia, el aviso se retira');
+    igual(e.boton().dataset.icono, 'copiar', 'si el monto cambia, el aviso se retira');
   }
 
   {
@@ -323,7 +349,40 @@ async function principal() {
     e.boton().pulsar();
     await asentar();
     e.valor.textContent = '16,00 Bs';
-    igual(e.boton().textContent, 'Copiado', 'un repintado con el mismo numero no lo borra');
+    igual(e.boton().dataset.icono, 'listo', 'un repintado con el mismo numero no lo borra');
+    // Y si solo cambia la moneda alrededor, el numero copiado sigue valiendo.
+    e.valor.textContent = '$16,00';
+    igual(e.boton().dataset.icono, 'listo', 'cambiar la moneda alrededor no invalida el numero');
+  }
+
+  console.log('--- solo el numero ---');
+
+  {
+    const e = crearEntorno();
+    const CASOS = [
+      ['1.250.000,00 Bs', '1.250.000,00', 'quita la moneda de la derecha'],
+      ['$100,00', '100,00', 'quita el simbolo de la izquierda'],
+      ['875,6505 Bs', '875,6505', 'respeta los cuatro decimales de una tasa'],
+      ['5,47 % mensual', '5,47', 'quita el % y la palabra'],
+      ['$120,00 (6 × $20,00)', '120,00', 'de dos numeros se queda con el primero'],
+      ['Sales ganando $12,00', '12,00', 'toma el primer NUMERO, no el principio del texto'],
+      ['$1.353,90 (12 cuotas)', '1.353,90', 'no se lleva el numero del parentesis'],
+      ['0,00 Bs', '0,00', 'el cero es un numero valido'],
+      ['—', '', 'sin numero no devuelve nada'],
+      ['No aplica', '', 'ni con texto sin cifras']
+    ];
+    CASOS.forEach(([entrada, esperado, porque]) => {
+      igual(e.Copiar.soloNumero(entrada), esperado, porque);
+    });
+  }
+
+  {
+    // Y el que de verdad importa: lo que llega al portapapeles.
+    const e = crearEntorno({ texto: '$120,00 (6 × $20,00)' });
+    e.montar();
+    e.boton().pulsar();
+    await asentar();
+    igual(e.copiados[0], '120,00', 'al portapapeles va el numero pelado, pegable');
   }
 
   console.log('--- accesibilidad ---');
@@ -333,6 +392,8 @@ async function principal() {
     e.montar();
     igual(e.boton().getAttribute('aria-label'), 'Copiar IVA (16 %)',
       'en el desglose, la etiqueta sale del <dt>');
+    igual(e.boton().getAttribute('title'), 'Copiar IVA (16 %)',
+      'y el title la repite, que es lo unico que ve el raton sobre un icono');
   }
 
   {
