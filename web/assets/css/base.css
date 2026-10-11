@@ -285,6 +285,33 @@ a { color: var(--acento); }
 .fila-total dd { color: var(--ok); }
 .equivalente { display: block; font-size: 0.75rem; color: var(--texto-suave); font-weight: 400; }
 
+/* Botón "Copiar" de los montos, inyectado por copiar.js.
+
+   Va como HERMANO del número, nunca como hijo: las herramientas reasignan
+   textContent en cada tecla y se llevarían por delante cualquier hijo.
+
+   Dentro de .fila dd el número va alineado a la derecha y el botón cae debajo,
+   con él. Las reglas de tamaño y peso son explícitas para que no herede el
+   1,2rem en negrita de .fila-total. */
+.copiar {
+  display: inline-block;
+  margin-top: 6px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--texto-suave);
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.copiar:hover { color: var(--texto); border-color: var(--texto-suave); }
+.copiar[data-aviso="ok"] { color: var(--ok); border-color: var(--ok); }
+.copiar[data-aviso="error"] { color: var(--error); border-color: var(--error); }
+
 /* ------------------------------ listas ----------------------------------- */
 
 .lista { list-style: none; margin: 0; padding: 0; }
