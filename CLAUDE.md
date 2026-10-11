@@ -49,6 +49,9 @@ Restricciones que marcan todas las decisiones:
   abrirla**, y eso destapó un defecto del service worker que no era de esta función sino de todos
   los despliegues anteriores: ver el relevo de versión en "PWA → Decisiones y trampas". Arreglado y
   desplegado el mismo día.
+- ✅ **Botón de copiar en los 26 montos del sitio (11-oct-2026).** Declarativo con `data-copiar` y
+  un módulo compartido; las cinco herramientas no cambiaron una línea. Arnés nuevo
+  (`infra/probar-copiar.js`) con 10 sabotajes comprobados. Ver "Copiar los montos".
 - ⬜ **Pendiente: la API.** Ver "API (pendiente)". Ya no la bloquea nada, y ahora además tiene un
   motivo concreto: sustituiría al repo comunitario del que hoy depende la tasa próxima.
 - ✅ Página de autor completa: nombre, bio, correo y enlace al repositorio. El nombre y la bio son
@@ -75,6 +78,7 @@ aws/
     ├── probar-rutas.js         ← comprueba las rutas del sitio (node, sin servidor)
     ├── probar-funcion-rutas.js ← pruebas de la función del borde (node, sin desplegar)
     ├── probar-tasas.js         ← ejecuta tasas.js con un DOM simulado y un reloj fijo
+    ├── probar-copiar.js        ← ejecuta copiar.js: el botón de copiar cada monto
     ├── probar-pwa.js           ← manifiesto, armazón y versión del service worker
     ├── probar-sw.js            ← ejecuta el service worker en Node y dispara sus manejadores
     ├── probar-instalar.js      ← ejecuta pwa.js con un DOM simulado (la banda de instalación)
@@ -244,6 +248,56 @@ de huso.
 - **`infra/template.yaml` NO se tocó**, y está comprobado, no supuesto: la tasa próxima viene de
   `raw.githubusercontent.com`, que ya estaba en `connect-src`, y `localStorage` no lo gobierna la
   CSP. Tampoco cambió el `ARMAZON` de `sw.js`, porque no hay archivo nuevo en `web/`.
+
+## Copiar los montos
+
+**Hecho el 11-oct-2026.** Cada monto calculado del sitio lleva un botón **Copiar**: las tres tasas
+de la portada, las tres tasas y los cuatro resultados del conversor, y las filas de desglose de
+`/iva-igtf/`, `/dividir-cuenta/` y `/cuotas/`. **26 montos en cinco páginas.**
+
+**Es declarativo, no se repite en cada herramienta.** Se marca el elemento que contiene el número
+con `data-copiar` y `web/assets/js/copiar.js` hace el resto: inyecta el botón, lo oculta cuando no
+hay nada que copiar, confirma la copia y vigila los cambios de valor. Las cinco herramientas **no
+cambiaron ni una línea de JavaScript**. Una página nueva solo pone el atributo.
+
+Es el primer módulo nuevo en `web/`, al revés que la preferencia de fecha valor, que se quedó
+dentro de `tasas.js`. El criterio es el mismo de entonces, aplicado al caso contrario: un archivo
+compartido se justifica cuando de verdad lo usan varias páginas.
+
+### Trampas, todas cubiertas por `probar-copiar.js`
+
+- ⚠️ **El botón se inyecta como HERMANO del monto, nunca como hijo.** Las herramientas asignan
+  `elemento.textContent` en cada pulsación de tecla, y eso **destruye a los hijos**: un botón dentro
+  del monto desaparecería al primer recálculo, sin ningún error. Es la misma trampa del `<dd>` con
+  un `<span>` dentro que ya está documentada más abajo. El DOM simulado del arnés **reproduce ese
+  borrado a propósito**: un arnés que no lo hiciera daría el visto bueno al bug.
+- ⚠️ **Que haya algo que copiar se decide por si el texto TIENE UN DÍGITO**, no por una lista de
+  textos de relleno. `—`, `No disponible`, `Cargando…`, `No aplica` y `Muy alto para calcular` no
+  tienen ninguno; cualquier monto real sí. Enumerar los rellenos obligaría a tocar `copiar.js` cada
+  vez que una herramienta cambiara el suyo, y el síntoma sería un botón que copia un guion.
+- ⚠️ **El aviso "Copiado" no puede sobrevivir a un cambio de monto.** Si no, el botón afirma que se
+  copió un número que ya no está en pantalla. Un `MutationObserver` lo retira cuando el texto
+  cambia, y **solo si cambia**: un repintado con el mismo número no lo borra.
+- **Un segundo toque no apila temporizadores.** Sin cancelar el anterior, el primero en vencer
+  restaura el botón mientras el segundo aviso todavía debería verse.
+- **Si el portapapeles falla, se dice.** `navigator.clipboard` puede no existir (http:// sin cifrar,
+  navegador viejo) o rechazar por permisos. El botón pone **"No se pudo"**, nunca finge éxito: creer
+  que copiaste un precio y pegar otra cosa es peor que saber que no se copió.
+- **Se copia el monto tal como se ve**, con su moneda: `1.250.000,00 Bs`, no `1250000`. Es lo que se
+  pega en WhatsApp para decirle un precio a un cliente, que es el uso real. Consecuencia asumida: en
+  `/cuotas/` dos filas llevan un paréntesis explicativo y se copia completo
+  (`$120,00 (6 × $20,00)`). Quitarlo exigiría parsear el texto y rompería el "copio lo que veo".
+- **`aria-label` dice QUÉ monto copia**, sacado del `<dt>` de la fila o del título de la tarjeta. Con
+  veintiséis botones, un lector de pantalla diría "Copiar" veintiséis veces sin más contexto.
+- **Se normalizó el markup de `/cuotas/`.** Tenía dos formas: unos montos eran `<dd><span id>` y
+  otros `<dd id>`. Los segundos pasaron a span, que es justo lo que recomienda la trampa del `<dd>`.
+  `cuotas.js` no cambió: sigue escribiendo en los mismos `id`.
+- **Los `.equivalente` (el "≈ $x" secundario) NO llevan botón**, y `/feriados/` tampoco: son días,
+  no montos. Veintiséis botones ya son muchos; cuarenta serían ruido.
+- ⚠️ **El arnés comprueba que cada página con `data-copiar` cargue `copiar.js`.** Es el agujero que
+  quedó anotado al añadir el selector de fecha valor: `probar-pwa.js` verifica que el archivo esté
+  en el `ARMAZON`, pero **no** que cada página lo incluya, así que una página olvidada pasaría todas
+  las pruebas y fallaría solo en el navegador del visitante. Ahora está cubierto.
 
 ## Decisiones y trampas encontradas
 
@@ -526,6 +580,7 @@ expiran. Solo S3 cobra centavos, más $0,50/mes de Route 53 si usa dominio propi
 ```bash
 ./servir.sh                          # http://127.0.0.1:8765/cuentas-claras/
 node infra/probar-tasas.js           # las dos tasas del BCV, la preferencia y los casos raros
+node infra/probar-copiar.js          # el botón de copiar: dónde se inyecta y sus avisos
 node infra/probar-rutas.js           # las rutas resuelven dentro de la subruta y existen
 node infra/probar-funcion-rutas.js   # los 19 casos de la función del borde
 node infra/probar-pwa.js             # manifiesto, armazón y versión del service worker
@@ -533,7 +588,7 @@ node infra/probar-sw.js              # ejecuta el service worker y dispara sus m
 node infra/probar-instalar.js        # ejecuta pwa.js y dispara beforeinstallprompt
 ```
 
-Las seis corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
+Las siete corren **sin servidor y sin navegador**, y se comprobó que fallan de verdad saboteando a
 propósito: una barra inicial suelta, un `<base href>` que se separa de `RutaBase`, un `<base>`
 colocado después de la primera ruta, la función del borde vuelta agnóstica de la subruta, un
 `start_url` absoluto, un icono que miente sobre su tamaño, un archivo nuevo en `web/` que no entró
@@ -561,6 +616,13 @@ próxima; poner `'proxima'` por omisión; **reasignar `valores` en vez de mutarl
 selector siempre; pintar `+0,00 %`; mezclar el euro de la vigente con el dólar de la próxima;
 parsear la fecha con getters locales; avisar a la página solo tras un `fetch`; y borrar un `id` del
 selector en `conversor/index.html`.
+
+Para `probar-copiar.js` se corrieron **10 sabotajes** y los diez se ponen rojos: inyectar el botón
+dentro del monto; dar por bueno cualquier texto en vez de exigir un dígito; no cancelar el
+temporizador anterior; dejar que "Copiado" sobreviva a un cambio de monto; fingir éxito cuando el
+portapapeles falla; no vigilar los cambios del monto; no limpiar el estado visual; etiqueta genérica
+sin decir qué monto copia; una página con montos marcados y sin el `<script>`; y sacar `copiar.js`
+del `ARMAZON`.
 
 `probar-tasas.js` se corre además con `TZ=Pacific/Kiritimati` (+14) y `TZ=Pacific/Pago_Pago` (−11),
 los dos extremos, porque un arnés de fechas que solo se corre en el huso de la máquina no prueba lo
