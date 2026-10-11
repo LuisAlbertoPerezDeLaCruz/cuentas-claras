@@ -83,6 +83,8 @@ function crearEntorno(opciones) {
   const o = opciones || {};
   const manejadoresWindow = {};
   const manejadoresDoc = {};
+  const manejadoresSw = {};
+  const recargas = [];
   const registros = [];
   const guardado = new Map();
   if (o.guardado !== undefined) guardado.set('instalarDescartadoEl', String(o.guardado));
@@ -124,6 +126,7 @@ function crearEntorno(opciones) {
 
   const ventana = {
     Marco: o.marco === false ? undefined : { NOMBRE: 'Cuentas Claras' },
+    location: { reload: function () { recargas.push(Date.now()); } },
     addEventListener: function (tipo, fn) {
       (manejadoresWindow[tipo] = manejadoresWindow[tipo] || []).push(fn);
     }
@@ -131,9 +134,16 @@ function crearEntorno(opciones) {
 
   const navegador = {
     serviceWorker: {
+      /* null = la pagina cargo SIN controlador, o sea primera visita a este
+         origen (o service worker recien registrado). Un objeto = ya venia
+         controlada, y entonces un controllerchange es relevo de version. */
+      controller: o.controlada ? { estado: 'activo' } : null,
       register: function (ruta, opciones) {
         registros.push({ ruta: ruta, opciones: opciones });
         return Promise.resolve({});
+      },
+      addEventListener: function (tipo, fn) {
+        (manejadoresSw[tipo] = manejadoresSw[tipo] || []).push(fn);
       }
     }
   };
@@ -153,6 +163,15 @@ function crearEntorno(opciones) {
     documento: documento,
     registros: registros,
     guardado: guardado,
+    recargas: recargas,
+
+    // El relevo de version: el navegador activa un service worker nuevo y este
+    // reclama la pagina que ya estaba abierta.
+    relevoDeVersion: function () {
+      const lista = manejadoresSw.controllerchange || [];
+      lista.forEach((fn) => fn());
+      return lista.length;
+    },
 
     banda: function () { return cuerpo.hijos.find((h) => h.className === 'instalar') || null; },
 
@@ -439,6 +458,54 @@ console.log('\n--- sin marco.js ---');
   if (!banda) fallar('sin window.Marco no aparece la banda');
   else if (/undefined/.test(banda.innerHTML)) fallar('sin window.Marco el texto dice "undefined"');
   else ok('sin window.Marco el texto sigue siendo legible');
+}
+
+/* --- el relevo de version ------------------------------------------------- */
+/* El sitio sirve las PAGINAS primero de la red y los RECURSOS primero de la
+   cache. En la primera apertura tras un despliegue eso da HTML NUEVO con
+   JavaScript VIEJO, servido todavia por el service worker anterior: la pagina se
+   ve perfecta y le faltan las funciones nuevas, sin ningun error. Paso en la app
+   instalada de Android el 11-oct-2026. La salida es recargar una vez cuando el
+   service worker nuevo toma el control. */
+
+console.log('--- relevo de version ---');
+
+{
+  const e = crearEntorno({ controlada: true });
+  const oidos = e.relevoDeVersion();
+  if (oidos === 0) fallar('nadie escucha controllerchange: un despliegue no se vera hasta la segunda apertura');
+  else if (e.recargas.length === 1) ok('pagina ya controlada: el relevo de version la recarga');
+  else fallar('esperaba 1 recarga, hubo ' + e.recargas.length);
+}
+
+{
+  /* El guardia. En la PRIMERA visita la pagina carga sin controlador y el service
+     worker recien registrado la reclama: eso dispara controllerchange sin que
+     exista version vieja ninguna. Recargar ahi es una recarga gratuita, y encima
+     en la visita en la que aparece la invitacion a instalar. */
+  const e = crearEntorno({ controlada: false });
+  e.relevoDeVersion();
+  if (e.recargas.length === 0) ok('primera visita: se reclama la pagina y NO se recarga');
+  else fallar('recargo en la primera visita, cuando no habia version vieja');
+}
+
+{
+  // Dos relevos seguidos no pueden encadenar recargas.
+  const e = crearEntorno({ controlada: true });
+  e.relevoDeVersion();
+  e.relevoDeVersion();
+  if (e.recargas.length === 1) ok('dos relevos seguidos siguen dando una sola recarga');
+  else fallar('esperaba 1 recarga, hubo ' + e.recargas.length);
+}
+
+{
+  /* El listener va al cargar el script, NO dentro de 'load': clients.claim()
+     puede llegar antes, y leer 'controller' tarde haria que el guardia creyera
+     que es la primera visita. Mismo error que con beforeinstallprompt. */
+  const e = crearEntorno({ controlada: true });
+  const oidos = e.relevoDeVersion();   // sin disparar 'load' en ningun momento
+  if (oidos > 0 && e.recargas.length === 1) ok('el relevo se atiende aunque no haya llegado "load"');
+  else fallar('el listener de controllerchange depende de "load": llega tarde');
 }
 
 console.log('\n' + fallos + ' fallos.');

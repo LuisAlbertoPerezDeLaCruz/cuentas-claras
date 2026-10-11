@@ -24,6 +24,35 @@
   // No hay service workers en http:// a secas (si en localhost y en 127.0.0.1),
   // ni bajo file://. Que falte la API no es un error: el sitio funciona igual.
   if ('serviceWorker' in navigator) {
+    /* Si la pagina YA venia controlada por un service worker, un cambio de
+       controlador significa RELEVO DE VERSION: acaba de activarse uno nuevo.
+
+       Recargar ahi no es un lujo, es obligatorio. El service worker sirve las
+       PAGINAS primero de la red y los RECURSOS primero de la cache, asi que en
+       la primera apertura tras un despliegue llega el HTML NUEVO y, atendido
+       todavia por el service worker viejo, el JavaScript VIEJO. La pagina se ve
+       perfecta y le faltan las funciones nuevas, sin ningun error en consola.
+       Paso en la app instalada de Android el 11-oct-2026: el selector de fecha
+       valor estaba en el HTML y el tasas.js viejo no lo mostraba nunca.
+
+       ⚠ Se lee 'controller' y se registra el listener AL CARGAR EL SCRIPT, no
+       dentro de 'load'. clients.claim() puede llegar antes de 'load', y entonces
+       'controller' ya no seria null y el guardia de abajo se equivocaria.
+
+       ⚠ El guardia es imprescindible. En la PRIMERA visita a un origen la pagina
+       carga sin controlador y el service worker recien registrado la reclama:
+       eso dispara controllerchange sin que exista ninguna version vieja, y
+       recargar ahi seria una recarga gratuita en la visita que menos conviene
+       molestar (es justo la carga en la que aparece la invitacion a instalar). */
+    var veniaControlada = navigator.serviceWorker.controller !== null;
+    var recargando = false;
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!veniaControlada || recargando) return;
+      recargando = true;   // dos relevos seguidos no pueden encadenar recargas
+      window.location.reload();
+    });
+
     // Se espera a 'load' para no competir por ancho de banda con el CSS y el JS
     // de la propia pagina, que es lo que el visitante esta esperando ver.
     window.addEventListener('load', function () {
